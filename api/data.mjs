@@ -1,6 +1,6 @@
 // Returns the signed-in user's own tracker data (empty for brand-new users).
 import { getSession } from './_lib.mjs';
-import { getTracker, emptyTracker, configured } from './_store.mjs';
+import { getTracker, seedTracker, configured } from './_store.mjs';
 
 export default async function handler(req, res) {
   const s = getSession(req);
@@ -10,8 +10,9 @@ export default async function handler(req, res) {
     return;
   }
   if (!configured()) {
-    // DB not wired yet — return an empty tracker so the UI still works.
-    res.status(200).json(emptyTracker());
+    // KV not attached yet — still serve the seeded view (owner sees history,
+    // others empty) so the dashboard renders. Saving needs KV.
+    res.status(200).json(seedTracker(s.login));
     return;
   }
   try {

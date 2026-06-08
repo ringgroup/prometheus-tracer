@@ -110,6 +110,21 @@
   .merr{ color:var(--red); font-size:11px; margin-top:10px; min-height:14px; }
   .empty{ text-align:center; color:var(--dim); padding:54px 20px; line-height:1.8; }
   .empty .big{ color:var(--amber); font-size:15px; letter-spacing:1px; margin-bottom:8px; }
+
+  /* ===== Bloomberg-style data tape (table under the chart) ===== */
+  .datatable{ border-top:1px solid #2a2a2a; }
+  .dt-h{ color:var(--amber); font-size:10px; letter-spacing:1px; padding:8px 12px 6px; background:#0d0d0d; border-bottom:1px solid #2a2a2a; }
+  .dt-scroll{ overflow:auto; max-height:260px; }
+  table.tape{ width:100%; border-collapse:collapse; font-size:11px; }
+  table.tape th{ color:var(--dim); font-weight:400; text-transform:uppercase; letter-spacing:.5px; font-size:9px;
+    text-align:right; padding:5px 12px; border-bottom:1px solid #2a2a2a; background:#111; position:sticky; top:0; }
+  table.tape th:first-child, table.tape th.l{ text-align:left; }
+  table.tape td{ padding:4px 12px; text-align:right; border-bottom:1px solid #161616; white-space:nowrap; }
+  table.tape td:first-child, table.tape td.l{ text-align:left; }
+  table.tape tbody tr:hover td{ background:#141414; }
+  table.tape .dim{ color:var(--dim); }
+  table.tape .gold{ color:#ffd633; }
+  table.tape .latest td{ background:#161003; }
 </style>
 </head>
 <body>
@@ -196,6 +211,8 @@
       <div class="ms-list" id="msList"></div>
     </div>
   </div>
+
+  <div class="datatable" id="dataTable"></div>
 
   <div class="fkeys">
     <span>1-4 TOGGLE SERIES</span><span>VIEW ALL / BODY FAT</span><span>X-AXIS DAY / DATE</span>
@@ -467,6 +484,52 @@ function boot(DATA){
                 grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
   });
   upd(DATA.rows.length-1);
+
+  // ===== Bloomberg-style data tape under the chart =====
+  (function renderTable(){
+    const rows=[...DATA.rows];                       // chronological
+    const dl=(v,unit)=> v==null ? '<span class="dim">—</span>'
+      : `<span class="${v<0?'up':(v>0?'dn':'dim')}">${v>0?'+':''}${v.toFixed(1)}${unit}</span>`;
+    const body=rows.map((r,i)=>{
+      const p=i>0?rows[i-1]:null;
+      const dW=p?+(r.weight-p.weight).toFixed(1):null;
+      const dF=p?+(r.fat-p.fat).toFixed(1):null;
+      const pct=Math.round(r.lost/GOAL*100);
+      return {r,dW,dF,pct,latest:i===rows.length-1};
+    }).reverse();                                    // newest first
+    let html =
+      `<div class="dt-h">◧ MEASUREMENT TAPE — ${rows.length} READING${rows.length===1?'':'S'}</div>`+
+      `<div class="dt-scroll"><table class="tape"><thead><tr>`+
+        `<th>Date</th><th>Day</th><th>Weight</th><th>Δ Wt</th><th>Body Fat</th><th>Δ Fat</th>`+
+        `<th>Fat Mass</th><th>Muscle</th><th>Lost</th><th>% Goal</th>`+
+      `</tr></thead><tbody>`+
+      body.map(({r,dW,dF,pct,latest})=>`<tr class="${latest?'latest':''}">`+
+        `<td class="cyan">${fmtDate(r.date)}</td>`+
+        `<td class="dim">D${r.day}</td>`+
+        `<td class="amber">${r.weight.toFixed(1)}</td>`+
+        `<td>${dl(dW,'')}</td>`+
+        `<td class="violet">${r.fat.toFixed(1)}%</td>`+
+        `<td>${dl(dF,' pts')}</td>`+
+        `<td class="cyan">${r.fatMass.toFixed(1)}</td>`+
+        `<td class="up">${r.muscle.toFixed(1)}</td>`+
+        `<td class="gold">${r.lost.toFixed(1)}</td>`+
+        `<td class="dim">${pct}%</td></tr>`).join('')+
+      `</tbody></table></div>`;
+
+    if(DATA.milestones && DATA.milestones.length){
+      const ms=[...DATA.milestones].reverse();
+      html +=
+        `<div class="dt-h" style="border-top:1px solid #2a2a2a">◆ INJECTION LOG — ${DATA.milestones.length} PIN${DATA.milestones.length===1?'':'S'}</div>`+
+        `<div class="dt-scroll" style="max-height:170px"><table class="tape"><thead><tr>`+
+          `<th>Date</th><th>Day</th><th class="l">Peptide</th><th>Dose</th></tr></thead><tbody>`+
+        ms.map(m=>`<tr><td class="cyan">${fmtDate(m.date)}</td><td class="dim">D${m.day}</td>`+
+          `<td class="l violet">${m.peptide||m.label||'—'}</td>`+
+          `<td class="amber">${m.mg!=null?m.mg+' mg':''}</td></tr>`).join('')+
+        `</tbody></table></div>`;
+    }
+    document.getElementById('dataTable').innerHTML=html;
+  })();
+
   const ALL=[chartTop,chartBot]; const drawAll=()=>ALL.forEach(c=>c.update());
 
   // ---- controls ----  map key -> [chart, datasetIndex]

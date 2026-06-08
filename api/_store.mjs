@@ -28,7 +28,10 @@ const OWNER_SEED = {
 };
 
 export const emptyTracker = () => ({ start: null, rows: [], milestones: [], goalLossKg: 40 });
-const seedFor = (login) =>
+
+// Initial tracker for a user with nothing stored yet: the owner gets the seeded
+// protocol history; everyone else starts empty.
+export const seedTracker = (login) =>
   login.toLowerCase() === OWNER ? structuredClone(OWNER_SEED) : emptyTracker();
 
 async function cmd(args) {
@@ -43,11 +46,11 @@ async function cmd(args) {
 
 export async function getTracker(login) {
   const v = await cmd(['GET', `tracker:${login.toLowerCase()}`]);
-  if (v == null) return seedFor(login);
+  if (v == null) return seedTracker(login);
   try {
     return JSON.parse(v);
   } catch {
-    return seedFor(login);
+    return seedTracker(login);
   }
 }
 
