@@ -78,6 +78,38 @@
   .loginbox .err{ color:var(--red); font-size:11px; margin-top:18px; min-height:14px; }
   .loginbox .note{ color:var(--dim); font-size:10px; margin-top:22px; line-height:1.6; }
   #app{ display:none; }
+
+  /* ===== data-entry modals (cards) ===== */
+  .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.8); z-index:60; padding:16px; }
+  .modal.show{ display:flex; }
+  .modalbox{ width:100%; max-width:540px; border:1px solid #2a2a2a; background:var(--panel); }
+  .mhead{ display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid #2a2a2a; background:#111; }
+  .mhead .tick{ color:var(--amber); font-weight:700; letter-spacing:1px; font-size:13px; }
+  .mhead .x{ margin-left:auto; cursor:pointer; color:var(--dim); border:1px solid #2a2a2a; padding:1px 8px; border-radius:2px; font-size:11px; }
+  .mhead .x:hover{ color:var(--amber); border-color:#3a2d00; }
+  .mbody{ padding:14px; }
+  .cards{ display:flex; gap:10px; flex-wrap:wrap; }
+  .card{ flex:1; min-width:120px; border:1px solid #2a2a2a; background:#0d0d0d; border-radius:3px; padding:10px; }
+  .card .clbl{ font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; }
+  .card .cunit{ color:var(--dim); font-size:11px; margin-top:3px; }
+  .card input, .card select{ width:100%; margin-top:6px; background:#000; border:1px solid #2a2a2a; color:var(--txt);
+    font-family:inherit; font-size:20px; font-weight:700; padding:6px 8px; border-radius:2px; }
+  .card select{ font-size:14px; }
+  .card.amber input{ color:var(--amber); } .card.cyan input{ color:var(--cyan); } .card.violet input{ color:var(--violet); }
+  .card input:focus, .card select:focus, .field input:focus{ outline:none; border-color:var(--amber); }
+  .field{ margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .field label{ font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; }
+  .field input{ background:#000; border:1px solid #2a2a2a; color:var(--txt); font-family:inherit; font-size:13px; padding:6px 8px; border-radius:2px; }
+  .field .auto{ color:var(--green); font-size:10px; }
+  .mactions{ display:flex; gap:8px; margin-top:16px; }
+  .mactions button{ font-family:inherit; font-size:12px; cursor:pointer; padding:8px 16px; border-radius:2px; letter-spacing:.5px; font-weight:700; }
+  .mactions .save{ color:#000; background:var(--amber); border:none; }
+  .mactions .save:hover{ background:var(--amber2); }
+  .mactions .cancel{ color:var(--dim); background:#0d0d0d; border:1px solid #2a2a2a; }
+  .merr{ color:var(--red); font-size:11px; margin-top:10px; min-height:14px; }
+  .empty{ text-align:center; color:var(--dim); padding:54px 20px; line-height:1.8; }
+  .empty .big{ color:var(--amber); font-size:15px; letter-spacing:1px; margin-bottom:8px; }
 </style>
 </head>
 <body>
@@ -132,6 +164,9 @@
     <button class="seg" id="xDate">DATE</button>
     <div class="sep"></div>
     <button class="fk" id="msBtn"><span class="k">M</span>MILESTONES</button>
+    <div class="sep"></div>
+    <button class="fk" id="addMeasBtn"><span class="k">＋</span>MEASUREMENT</button>
+    <button class="fk" id="addPinBtn"><span class="k">＋</span>INJECTION</button>
   </div>
 
   <div class="main">
@@ -167,6 +202,39 @@
     <span>M MILESTONES</span><span style="margin-left:auto;color:var(--green)">● INBODY FEED</span>
   </div>
 </div>
+
+<!-- ===== data-entry modals ===== -->
+<div class="modal" id="measModal">
+  <form class="modalbox" id="measForm">
+    <div class="mhead"><span class="tick">◆ ADD MEASUREMENT</span><span class="x" data-close>ESC ✕</span></div>
+    <div class="mbody">
+      <div class="cards">
+        <div class="card amber"><div class="clbl">Weight</div><input name="weight" type="number" step="0.1" min="20" max="500" inputmode="decimal" placeholder="0.0" required><div class="cunit">kg</div></div>
+        <div class="card cyan"><div class="clbl">Muscle Mass</div><input name="muscle" type="number" step="0.1" min="0" max="200" inputmode="decimal" placeholder="0.0" required><div class="cunit">kg</div></div>
+        <div class="card violet"><div class="clbl">Body Fat</div><input name="fat" type="number" step="0.1" min="0" max="100" inputmode="decimal" placeholder="0.0" required><div class="cunit">%</div></div>
+      </div>
+      <div class="field"><label>Date</label><input name="date" type="date"><span class="auto">● auto-captured (today) — change to backfill</span></div>
+      <div class="merr" id="measErr"></div>
+      <div class="mactions"><button type="submit" class="save">SAVE READING</button><button type="button" class="cancel" data-close>CANCEL</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="modal" id="pinModal">
+  <form class="modalbox" id="pinForm">
+    <div class="mhead"><span class="tick">◆ LOG INJECTION / PIN</span><span class="x" data-close>ESC ✕</span></div>
+    <div class="mbody">
+      <div class="cards">
+        <div class="card"><div class="clbl">Peptide</div><select name="peptide" id="pepSelect" required><option value="" disabled selected>— loading —</option></select></div>
+        <div class="card amber"><div class="clbl">Dose</div><input name="mg" type="number" step="0.25" min="0" inputmode="decimal" placeholder="0.0" list="mgList" required><div class="cunit">mg</div></div>
+      </div>
+      <datalist id="mgList"><option value="0.25"></option><option value="0.5"></option><option value="1"></option><option value="2"></option><option value="2.5"></option><option value="3"></option><option value="4"></option><option value="5"></option><option value="7.5"></option><option value="10"></option><option value="12.5"></option><option value="15"></option></datalist>
+      <div class="field"><label>Date</label><input name="date" type="date"><span class="auto">● auto-captured (today)</span></div>
+      <div class="merr" id="pinErr"></div>
+      <div class="mactions"><button type="submit" class="save">SAVE INJECTION</button><button type="button" class="cancel" data-close>CANCEL</button></div>
+    </div>
+  </form>
+</div>
 </div>
 
 <script>
@@ -192,8 +260,58 @@ tick(); setInterval(tick,1000);
   badge.innerHTML = (me.avatar ? `<img src="${me.avatar}" alt="">` : '') + '@' + me.login;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  boot(DATA);
+  wireEntry();                                  // data-entry modals (always available)
+  if(DATA.rows && DATA.rows.length) boot(DATA); // build charts only when there's data
+  else renderEmpty();                           // brand-new users start at 0
 })();
+
+// brand-new account: no readings yet
+function renderEmpty(){
+  document.querySelector('.main').innerHTML =
+    '<div class="empty"><div class="big">NO READINGS YET</div>' +
+    'Add your first InBody measurement to start your chart.<br>' +
+    'Hit <b style="color:var(--amber)">＋ MEASUREMENT</b> above — the date is captured automatically.</div>';
+}
+
+// wire up the "add measurement" + "log injection" modals and the peptide list
+async function wireEntry(){
+  const measModal=document.getElementById('measModal'), pinModal=document.getElementById('pinModal');
+  const today=()=> new Date().toISOString().slice(0,10);
+  const open=(m)=>{ const d=m.querySelector('input[name=date]'); if(d && !d.value) d.value=today(); m.classList.add('show');
+    const first=m.querySelector('input,select'); if(first) setTimeout(()=>first.focus(),30); };
+  const close=()=>{ measModal.classList.remove('show'); pinModal.classList.remove('show'); };
+  document.getElementById('addMeasBtn').onclick=()=>open(measModal);
+  document.getElementById('addPinBtn').onclick=()=>open(pinModal);
+  document.querySelectorAll('[data-close]').forEach(el=>el.onclick=close);
+  [measModal,pinModal].forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) close(); }));
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+
+  // peptide dropdown — sourced from /api/peptides
+  try{
+    const { peptides } = await (await fetch('/api/peptides')).json();
+    const sel=document.getElementById('pepSelect');
+    sel.innerHTML = '<option value="" disabled selected>— select peptide —</option>' +
+      peptides.map(p=>`<option value="${p}">${p}</option>`).join('');
+  }catch{}
+
+  const wire=(formId, url, errId, build)=>{
+    document.getElementById(formId).addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const err=document.getElementById(errId); err.textContent='';
+      const btn=e.target.querySelector('.save'); btn.disabled=true;
+      try{
+        const r=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(build(new FormData(e.target))) });
+        if(r.ok){ location.reload(); return; }
+        const j=await r.json().catch(()=>({})); err.textContent=j.error||'Failed to save';
+      }catch{ err.textContent='Network error'; }
+      btn.disabled=false;
+    });
+  };
+  wire('measForm','/api/readings','measErr',
+    f=>({ date:f.get('date')||undefined, weight:+f.get('weight'), muscle:+f.get('muscle'), fat:+f.get('fat') }));
+  wire('pinForm','/api/milestones','pinErr',
+    f=>({ date:f.get('date')||undefined, peptide:f.get('peptide'), mg:+f.get('mg') }));
+}
 
 function showLogin(){
   // surface GitHub's denial messages (?error=access_denied etc.)
@@ -383,6 +501,8 @@ function boot(DATA){
 
   // keyboard shortcuts
   document.addEventListener('keydown',(e)=>{
+    if(e.target.matches && e.target.matches('input,select,textarea')) return;  // don't hijack form typing
+    if(document.querySelector('.modal.show')) return;                          // ignore while a modal is open
     if(['1','2','3','4'].includes(e.key)) document.querySelector(`button.fk[data-ds="${+e.key-1}"]`).click();
     if(e.key.toLowerCase()==='m') msBtn.click();
   });

@@ -1,0 +1,70 @@
+// Per-user injection / "pin" log. POST adds an injection (peptide + mg, date
+// auto-captured); DELETE removes one. Stored as tracker.milestones entries.
+import { getSession } from './_lib.mjs';
+import { getTracker, saveTracker, configured } from './_store.mjs';
+import { recompute } from './_recompute.mjs';
+
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+const today = () => new Date().toISOString().slice(0, 10);
+
+export default async function handler(req, res) {
+  const s = getSession(req);
+  res.setHeader('Cache-Control', 'no-store');
+  if (!s) return res.status(401).json({ error: 'unauthorized' });
+  if (!configured()) return res.status(503).json({ error: 'Storage not configured yet.' });
+
+  let data;
+  try {
+    data = await getTracker(s.login);
+  } catch (e) {
+    return res.status(500).json({ error: 'failed to load data' });
+  }
+  data.milestones = data.milestones || [];
+
+  if (req.method === 'POST') {
+    const b = req.body || {};
+    const peptide = String(b.peptide || '').trim();
+    const mg = Number(b.mg);
+    const date = b.date ? String(b.date) : today(); // auto-capture today
+
+    if (!peptide || peptide.length > 60) return res.status(400).json({ error: 'Pick a peptide' });
+    if (!Number.isFinite(mg) || mg <= 0 || mg > 1000)
+      return res.status(400).json({ error: 'Dose (mg) must be greater than 0' });
+    if (!isDate(date)) return res.status(400).json({ error: 'Invalid date' });
+    if (data.milestones.length >= 2000)
+      return res.status(400).json({ error: 'Injection limit reached' });
+
+    const label = `${peptide} ${mg} mg`;
+    // de-dupe an identical entry on the same day
+    data.milestones = data.milestones.filter(
+      (m) => !(m.date === date && m.peptide === peptide && m.mg === mg),
+    );
+    data.milestones.push({ date, peptide, mg, label });
+    recompute(data);
+
+    try {
+      await saveTracker(s.login, data);
+    } catch (e) {
+      return res.status(500).json({ error: 'failed to save' });
+    }
+    return res.status(200).json(data);
+  }
+
+  if (req.method === 'DELETE') {
+    const q = req.body || req.query || {};
+    const date = String(q.date || '');
+    const label = String(q.label || '');
+    data.milestones = data.milestones.filter(
+      (m) => !(m.date === date && (!label || m.label === label)),
+    );
+    recompute(data);
+    try {
+      await saveTracker(s.login, data);
+    } catch (e) {
+      return res.status(500).json({ error: 'failed to save' });
+    }
+    return res.status(200).json(data);
+  }
+
+  return res.status(405).json({ error: 'method not allowed' });
+}

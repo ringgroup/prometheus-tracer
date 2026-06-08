@@ -11,33 +11,40 @@ an authenticated session — they are no longer embedded in the public HTML.
 
 ## Repo layout
 ```
-index.html       # the app shell: login gate + dashboard markup/CSS/JS
-api/_lib.mjs     # shared auth helpers (HMAC-signed cookie, allow-list, etc.)
-api/login.mjs    # GET /api/login    -> redirect to GitHub OAuth
-api/callback.mjs # GET /api/callback -> exchange code, set session cookie
-api/me.mjs       # GET /api/me       -> { authenticated, login, name, avatar }
-api/logout.mjs   # GET /api/logout   -> clear cookie
-api/data.mjs     # GET /api/data     -> body-comp DATA (401 unless signed in)
-vercel.json      # static hosting config (cleanUrls, security header)
-deploy.sh        # git init -> create public GitHub repo -> push -> vercel --prod
-.env.example     # the env vars the serverless functions need
-README.md        # user-facing overview
-CLAUDE.md        # this file
+index.html         # app shell: login gate + dashboard + data-entry modals
+api/_lib.mjs       # shared auth helpers (HMAC-signed cookie, allow-list)
+api/_store.mjs     # Vercel KV per-user storage + @ringgroup owner seed
+api/_recompute.mjs # recompute the day-axis after any add/remove
+api/login.mjs      # GET    /api/login      -> redirect to GitHub OAuth
+api/callback.mjs   # GET    /api/callback   -> exchange code, set session cookie
+api/me.mjs         # GET    /api/me         -> { authenticated, login, name, avatar }
+api/logout.mjs     # GET    /api/logout     -> clear cookie
+api/data.mjs       # GET    /api/data       -> the caller's own tracker (401 if anon)
+api/readings.mjs   # POST/DELETE /api/readings   -> add/remove a weight/muscle/fat reading
+api/milestones.mjs # POST/DELETE /api/milestones -> add/remove an injection ("pin")
+api/peptides.mjs   # GET    /api/peptides    -> peptide list for the injection dropdown
+vercel.json        # static hosting config (cleanUrls, security header)
+deploy.sh / .env.example / README.md / CLAUDE.md
 ```
-The body-comp `DATA` object now lives **server-side** in `api/data.mjs` (returned
-only to an authenticated GitHub session) — it is intentionally NOT in the public
-`index.html` anymore. To add a reading, append a row there. The raw
-`measurements.json`, InBody photos, and companion Python MCP server still live
-OUTSIDE this repo in the parent `Weight Loss Tracker/` folder.
+
+## Multi-user model
+Each GitHub user gets their own tracker, stored in **Vercel KV** under
+`tracker:<github_login>` as a JSON blob `{ start, rows[], milestones[], goalLossKg }`.
+New users start empty (the UI shows a "no readings yet" state); they add their own
+data via the **＋ MEASUREMENT** (weight/muscle/fat, date auto-captured) and
+**＋ INJECTION** (peptide dropdown + mg) modals. `@ringgroup` is the owner and is
+seeded with the original protocol history in `api/_store.mjs` (`OWNER_SEED`).
+The body-comp numbers are **never** in the public HTML — they're served per-user
+only to an authenticated session.
 
 ## Auth (GitHub OAuth)
 Serverless functions implement the OAuth code flow directly — no auth library.
 Session = an HttpOnly, Secure, SameSite=Lax cookie (`pt_session`) holding a
-JSON payload signed with HMAC-SHA256 (`SESSION_SECRET`). Access is restricted by
-`ALLOWED_GITHUB_USERS` (comma-separated logins; empty = any GitHub user).
-Required Vercel env vars: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
-`SESSION_SECRET`, `ALLOWED_GITHUB_USERS` (see `.env.example`). The GitHub OAuth
-App's callback URL must be `https://<domain>/api/callback`.
+JSON payload signed with HMAC-SHA256 (`SESSION_SECRET`). `ALLOWED_GITHUB_USERS`
+(comma-separated) optionally restricts who may sign in; empty = any GitHub user.
+Env vars: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`,
+`KV_REST_API_URL`, `KV_REST_API_TOKEN` (auto-injected by Vercel KV). The OAuth
+App callback URL must be `https://<domain>/api/callback`.
 
 ## Tech stack
 - Vanilla HTML/CSS/JS. Monospace Bloomberg aesthetic (amber `#ff8c00`, black bg).
