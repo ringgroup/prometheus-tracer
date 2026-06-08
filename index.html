@@ -18,6 +18,10 @@
   .cmd .go{ color:#000; background:var(--amber); padding:1px 6px; border-radius:2px; font-weight:700; }
   .cmd .desc{ color:var(--dim); }
   .cmd .clock{ margin-left:auto; color:var(--green); }
+  .cmd .user{ display:flex; align-items:center; gap:6px; color:var(--cyan); }
+  .cmd .user img{ width:16px; height:16px; border-radius:50%; border:1px solid #2a2a2a; }
+  .cmd .logout{ color:var(--dim); text-decoration:none; border:1px solid #2a2a2a; padding:2px 7px; border-radius:2px; font-size:11px; }
+  .cmd .logout:hover{ color:var(--amber); border-color:#3a2d00; }
   .hdr{ display:flex; flex-wrap:wrap; gap:0; border-bottom:1px solid #2a2a2a; }
   .hdr .cell{ padding:8px 14px; border-right:1px solid #2a2a2a; min-width:124px; }
   .hdr .cell.feat{ background:linear-gradient(180deg,#1a1205,#0a0a0a); }
@@ -58,23 +62,58 @@
   .fkeys{ display:flex; flex-wrap:wrap; background:#111; border-top:1px solid #2a2a2a; font-size:10px; }
   .fkeys span{ padding:5px 9px; border-right:1px solid #222; color:var(--dim); }
   canvas{ cursor:crosshair; }
+
+  /* ===== login gate ===== */
+  #loginScreen{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 35%,#0d0d0d,#000 70%); z-index:50; }
+  .loginbox{ text-align:center; border:1px solid #2a2a2a; background:var(--panel); padding:40px 44px; max-width:420px; }
+  .loginbox .brand{ color:var(--amber); font-weight:700; letter-spacing:2px; font-size:18px; }
+  .loginbox .go{ color:#000; background:var(--amber); padding:1px 6px; border-radius:2px; font-weight:700; font-size:12px; margin-left:6px; }
+  .loginbox .sub{ color:var(--dim); font-size:10px; letter-spacing:1px; margin:10px 0 26px; text-transform:uppercase; }
+  .ghbtn{ display:inline-flex; align-items:center; gap:10px; text-decoration:none; cursor:pointer;
+    font-family:inherit; font-size:13px; font-weight:700; letter-spacing:.5px; color:#000; background:var(--amber);
+    border:none; padding:11px 20px; border-radius:3px; }
+  .ghbtn:hover{ background:var(--amber2); }
+  .ghbtn svg{ width:18px; height:18px; }
+  .loginbox .err{ color:var(--red); font-size:11px; margin-top:18px; min-height:14px; }
+  .loginbox .note{ color:var(--dim); font-size:10px; margin-top:22px; line-height:1.6; }
+  #app{ display:none; }
 </style>
 </head>
 <body>
+
+<!-- ===== LOGIN GATE (shown until authenticated) ===== -->
+<div id="loginScreen">
+  <div class="loginbox">
+    <div class="brand">PROMETHEUS TRACER<span class="go">GO</span></div>
+    <div class="sub">Body Composition Terminal · Access Restricted</div>
+    <a class="ghbtn" href="/api/login">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      Sign in with GitHub
+    </a>
+    <div class="err" id="loginErr"></div>
+    <div class="note">Private body-composition data.<br>Only authorized GitHub accounts may view this terminal.</div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD (revealed after authentication) ===== -->
+<div id="app">
 <div class="term">
   <div class="cmd">
     <span class="tick">PROMETHEUS TRACER</span><span class="go">GO</span>
     <span class="desc">RETATRUTIDE · BODY COMPOSITION MONITOR · INBODY-770 · 187CM</span>
+    <span class="user" id="userBadge"></span>
+    <a class="logout" href="/api/logout">SIGN OUT</a>
     <span class="clock" id="clock"></span>
   </div>
 
   <div class="hdr">
-    <div class="cell feat"><div class="lbl">◆ Body Fat</div><div class="val violet" id="hFat">39.6<span style="font-size:11px"> %</span></div><div class="chg dn" id="hFatChg">▼ 4.8 pts (-10.8%)</div></div>
-    <div class="cell"><div class="lbl">Weight</div><div class="val amber" id="hWt">142.6<span style="font-size:11px"> KG</span></div><div class="chg dn">▼ 12.1 (-7.82%)</div></div>
-    <div class="cell"><div class="lbl">Fat Mass</div><div class="val cyan" id="hFm">56.5<span style="font-size:11px"> KG</span></div><div class="chg dn">▼ 12.2 (-17.8%)</div></div>
-    <div class="cell"><div class="lbl">Muscle</div><div class="val up" id="hMu">49.5<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)">◇ -0.1 kg</div></div>
-    <div class="cell feat"><div class="lbl">▼ Total Lost</div><div class="val" style="color:#ffd633" id="hLost">12.1<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)" id="hGoal">30% of 40kg goal</div></div>
-    <div class="cell"><div class="lbl">Day</div><div class="val" id="hDay">55</div><div class="chg" style="color:var(--dim)">since 1st inj.</div></div>
+    <div class="cell feat"><div class="lbl">◆ Body Fat</div><div class="val violet" id="hFat">—<span style="font-size:11px"> %</span></div><div class="chg dn" id="hFatChg"></div></div>
+    <div class="cell"><div class="lbl">Weight</div><div class="val amber" id="hWt">—<span style="font-size:11px"> KG</span></div><div class="chg dn" id="hWtChg"></div></div>
+    <div class="cell"><div class="lbl">Fat Mass</div><div class="val cyan" id="hFm">—<span style="font-size:11px"> KG</span></div><div class="chg dn" id="hFmChg"></div></div>
+    <div class="cell"><div class="lbl">Muscle</div><div class="val up" id="hMu">—<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)" id="hMuChg"></div></div>
+    <div class="cell feat"><div class="lbl">▼ Total Lost</div><div class="val" style="color:#ffd633" id="hLost">—<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)" id="hGoal"></div></div>
+    <div class="cell"><div class="lbl">Day</div><div class="val" id="hDay">—</div><div class="chg" style="color:var(--dim)">since 1st inj.</div></div>
   </div>
 
   <div class="ctrl">
@@ -106,16 +145,16 @@
     </div>
     <div class="readout">
       <h4>◧ DATA WINDOW</h4>
-      <div class="ro-date" id="roDate">08 JUN 2026</div>
-      <div class="ro-day" id="roDay">DAY 55</div>
-      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--violet)"></span>BODY FAT %</span><span class="v violet" id="roFp">39.6 %</span></div>
-      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--amber)"></span>WEIGHT</span><span class="v amber" id="roW">142.6 kg</span></div>
-      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--cyan)"></span>FAT MASS</span><span class="v cyan" id="roFm">56.5 kg</span></div>
-      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--green)"></span>MUSCLE</span><span class="v up" id="roM">49.5 kg</span></div>
+      <div class="ro-date" id="roDate">—</div>
+      <div class="ro-day" id="roDay">—</div>
+      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--violet)"></span>BODY FAT %</span><span class="v violet" id="roFp">—</span></div>
+      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--amber)"></span>WEIGHT</span><span class="v amber" id="roW">—</span></div>
+      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--cyan)"></span>FAT MASS</span><span class="v cyan" id="roFm">—</span></div>
+      <div class="ro-row"><span class="k"><span class="sq" style="background:var(--green)"></span>MUSCLE</span><span class="v up" id="roM">—</span></div>
       <div class="goal">
-        <div class="ro-row" style="padding:0;"><span class="k" style="color:#ffd633;">▼ TOTAL LOST</span><span class="v" style="color:#ffd633" id="roLost">12.1 kg</span></div>
-        <div class="bar"><div class="fill" id="goalFill" style="width:30%"></div></div>
-        <div style="display:flex;justify-content:space-between;color:var(--dim);font-size:9px;margin-top:3px;"><span id="goalPct">30% of goal</span><span>TARGET 40 KG</span></div>
+        <div class="ro-row" style="padding:0;"><span class="k" style="color:#ffd633;">▼ TOTAL LOST</span><span class="v" style="color:#ffd633" id="roLost">—</span></div>
+        <div class="bar"><div class="fill" id="goalFill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;color:var(--dim);font-size:9px;margin-top:3px;"><span id="goalPct">—</span><span id="goalTarget">TARGET — KG</span></div>
       </div>
       <div class="ro-row" style="margin-top:2px;border-top:1px solid #2a2a2a;padding-top:6px;"><span class="k">Δ FAT % vs prev</span><span class="v" id="roDfp">—</span></div>
       <div class="ro-row"><span class="k">Δ WEIGHT vs prev</span><span class="v" id="roDw">—</span></div>
@@ -128,189 +167,226 @@
     <span>M MILESTONES</span><span style="margin-left:auto;color:var(--green)">● INBODY FEED</span>
   </div>
 </div>
+</div>
 
 <script>
-const DATA = {
-  start:"2026-04-14",
-  rows:[
-    { date:"2026-04-21", day:7,  weight:154.7, muscle:49.6, fat:44.4 },
-    { date:"2026-05-02", day:18, weight:151.6, muscle:50.7, fat:41.9 },
-    { date:"2026-05-17", day:33, weight:150.3, muscle:50.2, fat:42.0 },
-    { date:"2026-05-26", day:42, weight:146.5, muscle:50.9, fat:39.7 },
-    { date:"2026-06-08", day:55, weight:142.6, muscle:49.5, fat:39.6 }
-  ],
-  milestones:[
-    { date:"2026-04-14", day:0,  label:"First injection — 1 mg" },
-    { date:"2026-04-17", day:3,  label:"Dose up to 3 mg" },
-    { date:"2026-05-26", day:42, label:"Switch to 4 mg q4-5d" }
-  ]
-};
-const BASELINE = DATA.rows[0].weight;        // first scale reading (Day 7)
-const GOAL = 40;                             // target total loss (kg)
-DATA.rows.forEach(r=>{ r.fatMass=+(r.weight*r.fat/100).toFixed(1); r.lost=+(BASELINE-r.weight).toFixed(1); });
-const fmtDate = s => { const m=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  const [y,mo,d]=s.split("-"); return d+" "+m[+mo-1]+" "+y; };
-
-function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB')+' GST'; }
+// ---- clock runs regardless of auth state ----
+function tick(){ const el=document.getElementById('clock'); if(el) el.textContent = new Date().toLocaleTimeString('en-GB')+' GST'; }
 tick(); setInterval(tick,1000);
 
-// milestone list in sidebar
-document.getElementById('msList').innerHTML = '<div style="color:var(--amber);font-size:10px;letter-spacing:1px;margin-bottom:4px;">◆ KEY DATES</div>' +
-  DATA.milestones.map(m=>`<div class="mi"><b>D${m.day}</b><span>${m.label}</span></div>`).join('');
+// ---- auth bootstrap: gate the dashboard behind a GitHub session ----
+(async function init(){
+  let me = { authenticated:false };
+  try { me = await (await fetch('/api/me')).json(); } catch {}
+  if(!me.authenticated){ showLogin(); return; }
 
-const P = (k)=> DATA.rows.map(r=>({x:r.day, y:r[k]}));
-let showMilestones = true;
+  let DATA;
+  try {
+    const r = await fetch('/api/data');
+    if(r.status !== 200) throw new Error('unauthorized');
+    DATA = await r.json();
+  } catch { showLogin(); return; }
 
-// vertical milestone markers
-const milestonePlugin = {
-  id:'milestones',
-  afterDraw(c){
-    if(!showMilestones) return;
-    const x=c.scales.x, a=c.chartArea, ctx=c.ctx;
-    DATA.milestones.forEach(m=>{
-      const px=x.getPixelForValue(m.day);
-      if(px<a.left-1||px>a.right+1) return;
-      ctx.save();
-      ctx.beginPath(); ctx.moveTo(px,a.top); ctx.lineTo(px,a.bottom);
-      ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.strokeStyle='rgba(192,139,255,.55)'; ctx.stroke();
-      ctx.setLineDash([]); ctx.fillStyle='#c08bff'; ctx.font='9px monospace';
-      ctx.save(); ctx.translate(px+3,a.top+4); ctx.rotate(Math.PI/2);
-      ctx.fillText(m.label, 0, 0); ctx.restore();
-      ctx.restore();
-    });
-  }
-};
-// baseline reference + shaded "lost" band (top panel only)
-const baselinePlugin = { id:'baseline', afterDatasetsDraw(c){
-  if(c.canvas.id!=='chartTop') return;
-  const y=c.scales.kg; if(!y || !c.isDatasetVisible(0)) return;
-  const py=y.getPixelForValue(BASELINE), a=c.chartArea, ctx=c.ctx;
-  if(py<a.top-1||py>a.bottom+1) return;
-  ctx.save();
-  ctx.beginPath(); ctx.moveTo(a.left,py); ctx.lineTo(a.right,py);
-  ctx.setLineDash([4,4]); ctx.lineWidth=1; ctx.strokeStyle='rgba(232,224,208,.4)'; ctx.stroke();
-  ctx.setLineDash([]); ctx.fillStyle='rgba(232,224,208,.65)'; ctx.font='9px monospace';
-  ctx.fillText('BASELINE '+BASELINE+' kg', a.left+5, py-4);
-  ctx.restore();
-} };
-// crosshair
-const crosshair = { id:'crosshair', afterDraw(c){
-  if(c._active&&c._active.length){ const x=c._active[0].element.x,{top,bottom}=c.chartArea,ctx=c.ctx;
-    ctx.save();ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);
-    ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,140,0,.6)';ctx.stroke();ctx.restore(); } } };
+  // show signed-in user, reveal dashboard, build charts
+  const badge = document.getElementById('userBadge');
+  badge.innerHTML = (me.avatar ? `<img src="${me.avatar}" alt="">` : '') + '@' + me.login;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  boot(DATA);
+})();
 
-const upd=(i)=>{
-  const r=DATA.rows[i], p= i>0?DATA.rows[i-1]:null;
-  document.getElementById('roDate').textContent=fmtDate(r.date);
-  document.getElementById('roDay').textContent='DAY '+r.day;
-  document.getElementById('roFp').textContent=r.fat.toFixed(1)+' %';
-  document.getElementById('roW').textContent=r.weight.toFixed(1)+' kg';
-  document.getElementById('roFm').textContent=r.fatMass.toFixed(1)+' kg';
-  document.getElementById('roM').textContent=r.muscle.toFixed(1)+' kg';
-  document.getElementById('roLost').textContent=r.lost.toFixed(1)+' kg';
-  const pct=Math.round(r.lost/GOAL*100);
-  document.getElementById('goalFill').style.width=Math.min(100,pct)+'%';
-  document.getElementById('goalPct').textContent=pct+'% of goal';
-  document.getElementById('hLost').innerHTML=r.lost.toFixed(1)+'<span style="font-size:11px"> KG</span>';
-  document.getElementById('hGoal').textContent=pct+'% of '+GOAL+'kg goal';
-  document.getElementById('hDay').textContent=r.day;
-  const dfp=document.getElementById('roDfp'), dw=document.getElementById('roDw');
-  if(p){ const a=+(r.fat-p.fat).toFixed(1), b=+(r.weight-p.weight).toFixed(1);
-    dfp.textContent=(a>0?'+':'')+a+' pts'; dfp.className='v '+(a<0?'up':'dn');
-    dw.textContent=(b>0?'+':'')+b+' kg'; dw.className='v '+(b<0?'up':'dn');
-  } else { dfp.textContent='—'; dfp.className='v'; dw.textContent='—'; dw.className='v'; }
-};
-
-const mDays=DATA.rows.map(r=>r.day);
-let xMode='day';
-
-function xScale(showLabels){
-  return { type:'linear', min:0, max:57,
-    afterBuildTicks:(ax)=>{ ax.ticks=mDays.map(v=>({value:v})); },
-    ticks:{ display:showLabels, color:'#8a8170', font:{family:'monospace',size:10},
-      callback:(v)=>{ if(xMode==='day') return 'D'+v; const r=DATA.rows.find(x=>x.day===v); return r? r.date.slice(5) : v; } },
-    grid:{ color:'#161616' }, border:{ color:'#2a2a2a' },
-    title:{ display:showLabels, text:'DAYS SINCE FIRST INJECTION', color:'#8a8170', font:{family:'monospace',size:9} } };
+function showLogin(){
+  // surface GitHub's denial messages (?error=access_denied etc.)
+  const p = new URLSearchParams(location.search);
+  if(p.get('error')) document.getElementById('loginErr').textContent =
+    (p.get('error_description') || p.get('error')).replace(/\+/g,' ');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
 }
-const tipCb={ title:(it)=>{ const r=DATA.rows.find(x=>x.day===it[0].parsed.x); return r? fmtDate(r.date)+'  ·  DAY '+r.day : ''; },
-  label:(ctx)=> ' '+ctx.dataset.label+': '+ctx.parsed.y+(ctx.dataset.yAxisID==='pct'?' %':' kg') };
-const baseOpts=()=>({ responsive:true, animation:{duration:450}, interaction:{mode:'nearest',axis:'x',intersect:false},
-  onHover:(e,el)=>{ if(el.length) upd(el[0].index); },
-  plugins:{ legend:{ labels:{ color:'#e8e0d0', font:{family:'monospace',size:11}, usePointStyle:true, boxWidth:8 } },
-    tooltip:{ backgroundColor:'#000', borderColor:'#ff8c00', borderWidth:1, titleColor:'#33ccff', bodyColor:'#e8e0d0',
-      bodyFont:{family:'monospace'}, titleFont:{family:'monospace'}, padding:10, usePointStyle:true, callbacks:tipCb } } });
 
-// ===== TOP PANEL: Weight (left axis) + Body Fat % (right, featured) + Total Lost =====
-const chartTop=new Chart(document.getElementById('chartTop'),{
-  type:'line', plugins:[crosshair,milestonePlugin,baselinePlugin],
-  data:{ datasets:[
-    { label:'Weight (kg)', data:P('weight'), yAxisID:'kg', borderColor:'#ff8c00', backgroundColor:'rgba(255,59,59,.13)',
-      fill:{ target:{value:BASELINE}, below:'rgba(255,59,59,.13)', above:'rgba(0,0,0,0)' },
-      tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 },
-    { label:'Body Fat %', data:P('fat'), yAxisID:'pct', borderColor:'#c08bff', backgroundColor:'#c08bff', tension:.25, borderWidth:3.5, pointRadius:4, pointHoverRadius:7 }
-  ]},
-  options:{ ...baseOpts(),
-    scales:{ x:xScale(false),
-      kg:{ position:'left', title:{display:true,text:'WEIGHT (KG)',color:'#ff8c00',font:{family:'monospace',size:9}},
-           ticks:{color:'#ff8c00',font:{family:'monospace',size:10}}, grid:{color:'#161616'}, border:{color:'#2a2a2a'} },
-      pct:{ position:'right', title:{display:true,text:'BODY FAT (%)',color:'#c08bff',font:{family:'monospace',size:9}},
-            ticks:{color:'#c08bff',font:{family:'monospace',size:10}}, grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
-});
+// ===== dashboard renderer (unchanged behaviour, now fed from /api/data) =====
+function boot(DATA){
+  const BASELINE = DATA.rows[0].weight;          // first scale reading (Day 7)
+  const GOAL = DATA.goalLossKg || 40;            // target total loss (kg)
+  DATA.rows.forEach(r=>{ r.fatMass=+(r.weight*r.fat/100).toFixed(1); r.lost=+(BASELINE-r.weight).toFixed(1); });
+  const fmtDate = s => { const m=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+    const [y,mo,d]=s.split("-"); return d+" "+m[+mo-1]+" "+y; };
 
-// ===== BOTTOM SUBPLOT (MACD-style): Fat Mass + Muscle =====
-const chartBot=new Chart(document.getElementById('chartBot'),{
-  type:'line', plugins:[crosshair,milestonePlugin],
-  data:{ datasets:[
-    { label:'Fat Mass (kg)', data:P('fatMass'), yAxisID:'kg', borderColor:'#33ccff', backgroundColor:'#33ccff', tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 },
-    { label:'Muscle (kg)',   data:P('muscle'),  yAxisID:'kg', borderColor:'#33ff66', backgroundColor:'#33ff66', tension:.25, borderWidth:2,   pointRadius:3, pointHoverRadius:6 }
-  ]},
-  options:{ ...baseOpts(),
-    scales:{ x:xScale(true),
-      kg:{ position:'left', title:{display:true,text:'FAT / MUSCLE (KG)',color:'#8a8170',font:{family:'monospace',size:9}},
-           ticks:{color:'#8a8170',font:{family:'monospace',size:10}}, grid:{color:'#161616'}, border:{color:'#2a2a2a'} },
-      // ghost right axis to keep the two panels horizontally aligned with the top's % axis
-      ghost:{ position:'right', display:true, title:{display:true,text:' ',font:{size:9}},
-              ticks:{ color:'rgba(0,0,0,0)', font:{family:'monospace',size:10}, callback:()=>'00.0' },
-              grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
-});
-upd(DATA.rows.length-1);
-const ALL=[chartTop,chartBot]; const drawAll=()=>ALL.forEach(c=>c.update());
+  // milestone list in sidebar
+  document.getElementById('msList').innerHTML = '<div style="color:var(--amber);font-size:10px;letter-spacing:1px;margin-bottom:4px;">◆ KEY DATES</div>' +
+    DATA.milestones.map(m=>`<div class="mi"><b>D${m.day}</b><span>${m.label}</span></div>`).join('');
 
-// ---- controls ----  map key -> [chart, datasetIndex]
-const SERIES={ '0':[chartTop,0], '1':[chartBot,0], '2':[chartBot,1], '3':[chartTop,1] };
-const btn=(k)=>document.querySelector(`button.fk[data-ds="${k}"]`);
-document.querySelectorAll('button.fk[data-ds]').forEach(b=>{
-  b.addEventListener('click',()=>{ const [c,i]=SERIES[b.dataset.ds]; const vis=c.isDatasetVisible(i);
-    c.setDatasetVisibility(i,!vis); b.classList.toggle('off',vis); c.update(); });
-});
-const botPanel=document.getElementById('botPanel');
-const setView=(fat)=>{
-  // BODY FAT view: isolate the % line, hide weight and the whole bottom subplot
-  ['0'].forEach(k=>{ const [c,i]=SERIES[k]; c.setDatasetVisibility(i,!fat); btn(k).classList.toggle('off',fat); });
-  const [ct,it]=SERIES['3']; ct.setDatasetVisibility(it,true); btn('3').classList.remove('off');
-  ['1','2'].forEach(k=>{ const [c,i]=SERIES[k]; c.setDatasetVisibility(i,!fat); btn(k).classList.toggle('off',fat); });
-  chartTop.options.scales.kg.display=!fat;
-  botPanel.style.display = fat ? 'none' : 'block';
-  if(!fat) chartBot.resize();
-  drawAll();
-  document.getElementById('vAll').classList.toggle('act',!fat);
-  document.getElementById('vFat').classList.toggle('act',fat);
-};
-document.getElementById('vAll').onclick=()=>setView(false);
-document.getElementById('vFat').onclick=()=>setView(true);
-const setX=(mode)=>{ xMode=mode; drawAll();
-  document.getElementById('xDay').classList.toggle('act',mode==='day');
-  document.getElementById('xDate').classList.toggle('act',mode==='date'); };
-document.getElementById('xDay').onclick=()=>setX('day');
-document.getElementById('xDate').onclick=()=>setX('date');
-const msBtn=document.getElementById('msBtn');
-msBtn.onclick=()=>{ showMilestones=!showMilestones; msBtn.classList.toggle('off',!showMilestones); drawAll(); };
+  // header summary (latest vs baseline)
+  const last = DATA.rows[DATA.rows.length-1], first = DATA.rows[0];
+  const pctChg=(a,b)=> (b? ((a-b)/b*100):0);
+  const setChg=(id,delta,unit,pct)=>{ const el=document.getElementById(id); if(!el) return;
+    const sign=delta<0?'▼':(delta>0?'▲':'◇'); el.className='chg '+(delta<0?'dn':(delta>0?'up':''));
+    el.textContent=`${sign} ${Math.abs(delta).toFixed(1)} ${unit}`+(pct!=null?` (${pct>0?'+':''}${pct.toFixed(1)}%)`:''); };
+  document.getElementById('hFat').innerHTML=last.fat.toFixed(1)+'<span style="font-size:11px"> %</span>';
+  document.getElementById('hWt').innerHTML=last.weight.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+  document.getElementById('hFm').innerHTML=last.fatMass.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+  document.getElementById('hMu').innerHTML=last.muscle.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+  setChg('hFatChg', last.fat-first.fat, 'pts', pctChg(last.fat,first.fat));
+  setChg('hWtChg', last.weight-first.weight, '', pctChg(last.weight,first.weight));
+  setChg('hFmChg', last.fatMass-first.fatMass, '', pctChg(last.fatMass,first.fatMass));
+  setChg('hMuChg', last.muscle-first.muscle, 'kg', null);
+  document.getElementById('goalTarget').textContent='TARGET '+GOAL+' KG';
 
-// keyboard shortcuts
-document.addEventListener('keydown',(e)=>{
-  if(['1','2','3','4'].includes(e.key)) document.querySelector(`button.fk[data-ds="${+e.key-1}"]`).click();
-  if(e.key.toLowerCase()==='m') msBtn.click();
-});
+  const P = (k)=> DATA.rows.map(r=>({x:r.day, y:r[k]}));
+  let showMilestones = true;
+
+  // vertical milestone markers
+  const milestonePlugin = {
+    id:'milestones',
+    afterDraw(c){
+      if(!showMilestones) return;
+      const x=c.scales.x, a=c.chartArea, ctx=c.ctx;
+      DATA.milestones.forEach(m=>{
+        const px=x.getPixelForValue(m.day);
+        if(px<a.left-1||px>a.right+1) return;
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(px,a.top); ctx.lineTo(px,a.bottom);
+        ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.strokeStyle='rgba(192,139,255,.55)'; ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle='#c08bff'; ctx.font='9px monospace';
+        ctx.save(); ctx.translate(px+3,a.top+4); ctx.rotate(Math.PI/2);
+        ctx.fillText(m.label, 0, 0); ctx.restore();
+        ctx.restore();
+      });
+    }
+  };
+  // baseline reference + shaded "lost" band (top panel only)
+  const baselinePlugin = { id:'baseline', afterDatasetsDraw(c){
+    if(c.canvas.id!=='chartTop') return;
+    const y=c.scales.kg; if(!y || !c.isDatasetVisible(0)) return;
+    const py=y.getPixelForValue(BASELINE), a=c.chartArea, ctx=c.ctx;
+    if(py<a.top-1||py>a.bottom+1) return;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(a.left,py); ctx.lineTo(a.right,py);
+    ctx.setLineDash([4,4]); ctx.lineWidth=1; ctx.strokeStyle='rgba(232,224,208,.4)'; ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle='rgba(232,224,208,.65)'; ctx.font='9px monospace';
+    ctx.fillText('BASELINE '+BASELINE+' kg', a.left+5, py-4);
+    ctx.restore();
+  } };
+  // crosshair
+  const crosshair = { id:'crosshair', afterDraw(c){
+    if(c._active&&c._active.length){ const x=c._active[0].element.x,{top,bottom}=c.chartArea,ctx=c.ctx;
+      ctx.save();ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);
+      ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,140,0,.6)';ctx.stroke();ctx.restore(); } } };
+
+  const upd=(i)=>{
+    const r=DATA.rows[i], p= i>0?DATA.rows[i-1]:null;
+    document.getElementById('roDate').textContent=fmtDate(r.date);
+    document.getElementById('roDay').textContent='DAY '+r.day;
+    document.getElementById('roFp').textContent=r.fat.toFixed(1)+' %';
+    document.getElementById('roW').textContent=r.weight.toFixed(1)+' kg';
+    document.getElementById('roFm').textContent=r.fatMass.toFixed(1)+' kg';
+    document.getElementById('roM').textContent=r.muscle.toFixed(1)+' kg';
+    document.getElementById('roLost').textContent=r.lost.toFixed(1)+' kg';
+    const pct=Math.round(r.lost/GOAL*100);
+    document.getElementById('goalFill').style.width=Math.min(100,pct)+'%';
+    document.getElementById('goalPct').textContent=pct+'% of goal';
+    document.getElementById('hLost').innerHTML=r.lost.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+    document.getElementById('hGoal').textContent=pct+'% of '+GOAL+'kg goal';
+    document.getElementById('hDay').textContent=r.day;
+    const dfp=document.getElementById('roDfp'), dw=document.getElementById('roDw');
+    if(p){ const a=+(r.fat-p.fat).toFixed(1), b=+(r.weight-p.weight).toFixed(1);
+      dfp.textContent=(a>0?'+':'')+a+' pts'; dfp.className='v '+(a<0?'up':'dn');
+      dw.textContent=(b>0?'+':'')+b+' kg'; dw.className='v '+(b<0?'up':'dn');
+    } else { dfp.textContent='—'; dfp.className='v'; dw.textContent='—'; dw.className='v'; }
+  };
+
+  const mDays=DATA.rows.map(r=>r.day);
+  const xMax=Math.max(...mDays)+2;
+  let xMode='day';
+
+  function xScale(showLabels){
+    return { type:'linear', min:0, max:xMax,
+      afterBuildTicks:(ax)=>{ ax.ticks=mDays.map(v=>({value:v})); },
+      ticks:{ display:showLabels, color:'#8a8170', font:{family:'monospace',size:10},
+        callback:(v)=>{ if(xMode==='day') return 'D'+v; const r=DATA.rows.find(x=>x.day===v); return r? r.date.slice(5) : v; } },
+      grid:{ color:'#161616' }, border:{ color:'#2a2a2a' },
+      title:{ display:showLabels, text:'DAYS SINCE FIRST INJECTION', color:'#8a8170', font:{family:'monospace',size:9} } };
+  }
+  const tipCb={ title:(it)=>{ const r=DATA.rows.find(x=>x.day===it[0].parsed.x); return r? fmtDate(r.date)+'  ·  DAY '+r.day : ''; },
+    label:(ctx)=> ' '+ctx.dataset.label+': '+ctx.parsed.y+(ctx.dataset.yAxisID==='pct'?' %':' kg') };
+  const baseOpts=()=>({ responsive:true, animation:{duration:450}, interaction:{mode:'nearest',axis:'x',intersect:false},
+    onHover:(e,el)=>{ if(el.length) upd(el[0].index); },
+    plugins:{ legend:{ labels:{ color:'#e8e0d0', font:{family:'monospace',size:11}, usePointStyle:true, boxWidth:8 } },
+      tooltip:{ backgroundColor:'#000', borderColor:'#ff8c00', borderWidth:1, titleColor:'#33ccff', bodyColor:'#e8e0d0',
+        bodyFont:{family:'monospace'}, titleFont:{family:'monospace'}, padding:10, usePointStyle:true, callbacks:tipCb } } });
+
+  // ===== TOP PANEL: Weight (left axis) + Body Fat % (right, featured) =====
+  const chartTop=new Chart(document.getElementById('chartTop'),{
+    type:'line', plugins:[crosshair,milestonePlugin,baselinePlugin],
+    data:{ datasets:[
+      { label:'Weight (kg)', data:P('weight'), yAxisID:'kg', borderColor:'#ff8c00', backgroundColor:'rgba(255,59,59,.13)',
+        fill:{ target:{value:BASELINE}, below:'rgba(255,59,59,.13)', above:'rgba(0,0,0,0)' },
+        tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 },
+      { label:'Body Fat %', data:P('fat'), yAxisID:'pct', borderColor:'#c08bff', backgroundColor:'#c08bff', tension:.25, borderWidth:3.5, pointRadius:4, pointHoverRadius:7 }
+    ]},
+    options:{ ...baseOpts(),
+      scales:{ x:xScale(false),
+        kg:{ position:'left', title:{display:true,text:'WEIGHT (KG)',color:'#ff8c00',font:{family:'monospace',size:9}},
+             ticks:{color:'#ff8c00',font:{family:'monospace',size:10}}, grid:{color:'#161616'}, border:{color:'#2a2a2a'} },
+        pct:{ position:'right', title:{display:true,text:'BODY FAT (%)',color:'#c08bff',font:{family:'monospace',size:9}},
+              ticks:{color:'#c08bff',font:{family:'monospace',size:10}}, grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
+  });
+
+  // ===== BOTTOM SUBPLOT (MACD-style): Fat Mass + Muscle =====
+  const chartBot=new Chart(document.getElementById('chartBot'),{
+    type:'line', plugins:[crosshair,milestonePlugin],
+    data:{ datasets:[
+      { label:'Fat Mass (kg)', data:P('fatMass'), yAxisID:'kg', borderColor:'#33ccff', backgroundColor:'#33ccff', tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 },
+      { label:'Muscle (kg)',   data:P('muscle'),  yAxisID:'kg', borderColor:'#33ff66', backgroundColor:'#33ff66', tension:.25, borderWidth:2,   pointRadius:3, pointHoverRadius:6 }
+    ]},
+    options:{ ...baseOpts(),
+      scales:{ x:xScale(true),
+        kg:{ position:'left', title:{display:true,text:'FAT / MUSCLE (KG)',color:'#8a8170',font:{family:'monospace',size:9}},
+             ticks:{color:'#8a8170',font:{family:'monospace',size:10}}, grid:{color:'#161616'}, border:{color:'#2a2a2a'} },
+        // ghost right axis to keep the two panels horizontally aligned with the top's % axis
+        ghost:{ position:'right', display:true, title:{display:true,text:' ',font:{size:9}},
+                ticks:{ color:'rgba(0,0,0,0)', font:{family:'monospace',size:10}, callback:()=>'00.0' },
+                grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
+  });
+  upd(DATA.rows.length-1);
+  const ALL=[chartTop,chartBot]; const drawAll=()=>ALL.forEach(c=>c.update());
+
+  // ---- controls ----  map key -> [chart, datasetIndex]
+  const SERIES={ '0':[chartTop,0], '1':[chartBot,0], '2':[chartBot,1], '3':[chartTop,1] };
+  const btn=(k)=>document.querySelector(`button.fk[data-ds="${k}"]`);
+  document.querySelectorAll('button.fk[data-ds]').forEach(b=>{
+    b.addEventListener('click',()=>{ const [c,i]=SERIES[b.dataset.ds]; const vis=c.isDatasetVisible(i);
+      c.setDatasetVisibility(i,!vis); b.classList.toggle('off',vis); c.update(); });
+  });
+  const botPanel=document.getElementById('botPanel');
+  const setView=(fat)=>{
+    // BODY FAT view: isolate the % line, hide weight and the whole bottom subplot
+    ['0'].forEach(k=>{ const [c,i]=SERIES[k]; c.setDatasetVisibility(i,!fat); btn(k).classList.toggle('off',fat); });
+    const [ct,it]=SERIES['3']; ct.setDatasetVisibility(it,true); btn('3').classList.remove('off');
+    ['1','2'].forEach(k=>{ const [c,i]=SERIES[k]; c.setDatasetVisibility(i,!fat); btn(k).classList.toggle('off',fat); });
+    chartTop.options.scales.kg.display=!fat;
+    botPanel.style.display = fat ? 'none' : 'block';
+    if(!fat) chartBot.resize();
+    drawAll();
+    document.getElementById('vAll').classList.toggle('act',!fat);
+    document.getElementById('vFat').classList.toggle('act',fat);
+  };
+  document.getElementById('vAll').onclick=()=>setView(false);
+  document.getElementById('vFat').onclick=()=>setView(true);
+  const setX=(mode)=>{ xMode=mode; drawAll();
+    document.getElementById('xDay').classList.toggle('act',mode==='day');
+    document.getElementById('xDate').classList.toggle('act',mode==='date'); };
+  document.getElementById('xDay').onclick=()=>setX('day');
+  document.getElementById('xDate').onclick=()=>setX('date');
+  const msBtn=document.getElementById('msBtn');
+  msBtn.onclick=()=>{ showMilestones=!showMilestones; msBtn.classList.toggle('off',!showMilestones); drawAll(); };
+
+  // keyboard shortcuts
+  document.addEventListener('keydown',(e)=>{
+    if(['1','2','3','4'].includes(e.key)) document.querySelector(`button.fk[data-ds="${+e.key-1}"]`).click();
+    if(e.key.toLowerCase()==='m') msBtn.click();
+  });
+}
 </script>
 </body>
 </html>

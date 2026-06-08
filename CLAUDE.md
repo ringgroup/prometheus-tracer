@@ -5,20 +5,39 @@ Handover context for Claude Code working in this repo.
 ## What this is
 A single-page, Bloomberg/TradingView-style terminal that tracks body-composition
 over a retatrutide protocol, built from InBody-770 scale readings. No build step,
-no framework, no backend — one self-contained `index.html`.
+no framework. The dashboard is gated behind **Sign in with GitHub** (raw GitHub
+OAuth on Vercel serverless functions), and the health numbers are served only to
+an authenticated session — they are no longer embedded in the public HTML.
 
 ## Repo layout
 ```
-index.html     # the entire app: markup + CSS + JS + embedded data
-vercel.json    # static hosting config (cleanUrls, security header)
-deploy.sh      # git init -> create public GitHub repo -> push -> vercel --prod
-README.md      # user-facing overview
-CLAUDE.md      # this file
+index.html       # the app shell: login gate + dashboard markup/CSS/JS
+api/_lib.mjs     # shared auth helpers (HMAC-signed cookie, allow-list, etc.)
+api/login.mjs    # GET /api/login    -> redirect to GitHub OAuth
+api/callback.mjs # GET /api/callback -> exchange code, set session cookie
+api/me.mjs       # GET /api/me       -> { authenticated, login, name, avatar }
+api/logout.mjs   # GET /api/logout   -> clear cookie
+api/data.mjs     # GET /api/data     -> body-comp DATA (401 unless signed in)
+vercel.json      # static hosting config (cleanUrls, security header)
+deploy.sh        # git init -> create public GitHub repo -> push -> vercel --prod
+.env.example     # the env vars the serverless functions need
+README.md        # user-facing overview
+CLAUDE.md        # this file
 ```
-The data lives **inline** in `index.html` (the `DATA` object). This repo is
-intentionally "dashboard only" — the raw `measurements.json`, the InBody photos,
-and a companion Python MCP server live OUTSIDE this repo in the parent
-`Weight Loss Tracker/` folder and were deliberately not published.
+The body-comp `DATA` object now lives **server-side** in `api/data.mjs` (returned
+only to an authenticated GitHub session) — it is intentionally NOT in the public
+`index.html` anymore. To add a reading, append a row there. The raw
+`measurements.json`, InBody photos, and companion Python MCP server still live
+OUTSIDE this repo in the parent `Weight Loss Tracker/` folder.
+
+## Auth (GitHub OAuth)
+Serverless functions implement the OAuth code flow directly — no auth library.
+Session = an HttpOnly, Secure, SameSite=Lax cookie (`pt_session`) holding a
+JSON payload signed with HMAC-SHA256 (`SESSION_SECRET`). Access is restricted by
+`ALLOWED_GITHUB_USERS` (comma-separated logins; empty = any GitHub user).
+Required Vercel env vars: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+`SESSION_SECRET`, `ALLOWED_GITHUB_USERS` (see `.env.example`). The GitHub OAuth
+App's callback URL must be `https://<domain>/api/callback`.
 
 ## Tech stack
 - Vanilla HTML/CSS/JS. Monospace Bloomberg aesthetic (amber `#ff8c00`, black bg).
