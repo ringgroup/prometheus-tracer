@@ -276,11 +276,18 @@ tick(); setInterval(tick,1000);
   if(!me.authenticated){ showLogin(); return; }
 
   let DATA;
-  try {
-    const r = await fetch('/api/data');
-    if(r.status !== 200) throw new Error('unauthorized');
-    DATA = await r.json();
-  } catch { showLogin(); return; }
+  // After a save we reload with the authoritative response stashed here, because
+  // Vercel Blob is eventually-consistent/edge-cached and an immediate re-read can
+  // be stale. Use the stash if present, otherwise fetch normally.
+  const fresh = sessionStorage.getItem('pt_fresh');
+  if(fresh){ sessionStorage.removeItem('pt_fresh'); try{ DATA = JSON.parse(fresh); }catch{} }
+  if(!DATA){
+    try {
+      const r = await fetch('/api/data');
+      if(r.status !== 200) throw new Error('unauthorized');
+      DATA = await r.json();
+    } catch { showLogin(); return; }
+  }
 
   // show signed-in user, reveal dashboard, build charts
   const badge = document.getElementById('userBadge');
@@ -340,7 +347,7 @@ async function wireEntry(){
       const btn=e.target.querySelector('.save'); btn.disabled=true;
       try{
         const r=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(build(new FormData(e.target))) });
-        if(r.ok){ location.reload(); return; }
+        if(r.ok){ const updated=await r.json().catch(()=>null); if(updated) sessionStorage.setItem('pt_fresh', JSON.stringify(updated)); location.reload(); return; }
         const j=await r.json().catch(()=>({})); err.textContent=j.error||'Failed to save';
       }catch{ err.textContent='Network error'; }
       btn.disabled=false;
