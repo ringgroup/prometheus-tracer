@@ -476,12 +476,17 @@ function boot(DATA){
               ticks:{color:'#c08bff',font:{family:'monospace',size:10}}, grid:{drawOnChartArea:false}, border:{color:'#2a2a2a'} } } }
   });
 
-  // ===== BOTTOM SUBPLOT (MACD-style): Fat Mass + Muscle =====
+  // ===== BOTTOM SUBPLOT: Fat Mass (line) + Muscle (volume bars) =====
+  // muscle as volume bars — blue when up vs previous reading, orange when down
+  const muscleBarColors = DATA.rows.map((r,i)=>
+    (i===0 || r.muscle>=DATA.rows[i-1].muscle) ? 'rgba(47,129,247,.72)' : 'rgba(255,140,0,.78)');
   const chartBot=new Chart(document.getElementById('chartBot'),{
     type:'line', plugins:[crosshair,milestonePlugin],
     data:{ datasets:[
-      { label:'Fat Mass (kg)', data:P('fatMass'), yAxisID:'kg', borderColor:'#33ccff', backgroundColor:'#33ccff', tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 },
-      { label:'Muscle (kg)',   data:P('muscle'),  yAxisID:'kg', borderColor:'#33ff66', backgroundColor:'#33ff66', tension:.25, borderWidth:2,   pointRadius:3, pointHoverRadius:6 }
+      { label:'Muscle (kg)', type:'bar', data:P('muscle'), yAxisID:'kg', order:2,
+        backgroundColor:muscleBarColors, borderColor:muscleBarColors, borderWidth:0,
+        barThickness:10, maxBarThickness:18 },
+      { label:'Fat Mass (kg)', data:P('fatMass'), yAxisID:'kg', order:1, borderColor:'#33ccff', backgroundColor:'#33ccff', tension:.25, borderWidth:2.5, pointRadius:3, pointHoverRadius:6 }
     ]},
     options:{ ...baseOpts(),
       scales:{ x:xScale(true),
@@ -542,7 +547,7 @@ function boot(DATA){
   const ALL=[chartTop,chartBot]; const drawAll=()=>ALL.forEach(c=>c.update());
 
   // ---- controls ----  map key -> [chart, datasetIndex]
-  const SERIES={ '0':[chartTop,0], '1':[chartBot,0], '2':[chartBot,1], '3':[chartTop,1] };
+  const SERIES={ '0':[chartTop,0], '1':[chartBot,1], '2':[chartBot,0], '3':[chartTop,1] };
   const btn=(k)=>document.querySelector(`button.fk[data-ds="${k}"]`);
   document.querySelectorAll('button.fk[data-ds]').forEach(b=>{
     b.addEventListener('click',()=>{ const [c,i]=SERIES[b.dataset.ds]; const vis=c.isDatasetVisible(i);

@@ -7,32 +7,11 @@ const TOKEN = process.env.KV_REST_API_TOKEN;
 
 export const configured = () => Boolean(URL && TOKEN);
 
-// The owner account is seeded with the original protocol history the first time
-// it's read, so @ringgroup keeps the existing dashboard. Everyone else: empty.
-const OWNER = 'ringgroup';
-const OWNER_SEED = {
-  start: '2026-04-14',
-  rows: [
-    { date: '2026-04-21', day: 7, weight: 154.7, muscle: 49.6, fat: 44.4 },
-    { date: '2026-05-02', day: 18, weight: 151.6, muscle: 50.7, fat: 41.9 },
-    { date: '2026-05-17', day: 33, weight: 150.3, muscle: 50.2, fat: 42.0 },
-    { date: '2026-05-26', day: 42, weight: 146.5, muscle: 50.9, fat: 39.7 },
-    { date: '2026-06-08', day: 55, weight: 142.6, muscle: 49.5, fat: 39.6 },
-  ],
-  milestones: [
-    { date: '2026-04-14', day: 0, label: 'Retatrutide 1 mg', peptide: 'Retatrutide', mg: 1 },
-    { date: '2026-04-17', day: 3, label: 'Retatrutide 3 mg', peptide: 'Retatrutide', mg: 3 },
-    { date: '2026-05-26', day: 42, label: 'Retatrutide 4 mg', peptide: 'Retatrutide', mg: 4 },
-  ],
-  goalLossKg: 40,
-};
-
 export const emptyTracker = () => ({ start: null, rows: [], milestones: [], goalLossKg: 40 });
 
-// Initial tracker for a user with nothing stored yet: the owner gets the seeded
-// protocol history; everyone else starts empty.
-export const seedTracker = (login) =>
-  login.toLowerCase() === OWNER ? structuredClone(OWNER_SEED) : emptyTracker();
+// Initial tracker for a user with nothing stored yet — EVERYONE starts empty
+// and builds their own history. No seeded/demo data.
+export const seedTracker = () => emptyTracker();
 
 async function cmd(args) {
   const r = await fetch(URL, {
