@@ -19,7 +19,10 @@ export async function getTracker(login) {
   try {
     // head() resolves the blob's authenticated URL; 404 -> no data yet.
     const meta = await head(pathFor(login), { token: TOKEN });
-    const res = await fetch(meta.url, { headers: { authorization: `Bearer ${TOKEN}` } });
+    // cache-bust + no-store so an overwrite is read back immediately (blobs are
+    // CDN-cached, otherwise a just-saved change can read stale).
+    const url = `${meta.url}?ts=${Date.now()}`;
+    const res = await fetch(url, { headers: { authorization: `Bearer ${TOKEN}` }, cache: 'no-store' });
     if (!res.ok) return seedTracker(login);
     return await res.json();
   } catch {
@@ -34,6 +37,7 @@ export async function saveTracker(login, data) {
     contentType: 'application/json',
     addRandomSuffix: false,
     allowOverwrite: true,
+    cacheControlMaxAge: 0, // mutable per-user data — don't let the CDN cache it
     token: TOKEN,
   });
   return data;
