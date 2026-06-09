@@ -1,11 +1,11 @@
-// Per-user storage on Vercel KV (Vercel-native key/value — no external service).
-// One key per user: `tracker:<github_login>` -> JSON string of the tracker.
-// Uses the Upstash-compatible REST API that Vercel KV injects as env vars
-// (KV_REST_API_URL + KV_REST_API_TOKEN) when you attach a KV store to the project.
-const URL = process.env.KV_REST_API_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN;
+// Per-user storage on Vercel Blob (Vercel-native, provisioned via CLI — no
+// external service, no browser flow). One private JSON blob per user at
+// `trackers/<github_login>.json`, read/written with BLOB_READ_WRITE_TOKEN.
+import { put, head } from '@vercel/blob';
 
-export const configured = () => Boolean(URL && TOKEN);
+const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+
+export const configured = () => Boolean(TOKEN);
 
 export const emptyTracker = () => ({ start: null, rows: [], milestones: [], goalLossKg: 40 });
 
@@ -13,27 +13,28 @@ export const emptyTracker = () => ({ start: null, rows: [], milestones: [], goal
 // and builds their own history. No seeded/demo data.
 export const seedTracker = () => emptyTracker();
 
-async function cmd(args) {
-  const r = await fetch(URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(args),
-  });
-  if (!r.ok) throw new Error(`kv ${r.status}: ${await r.text()}`);
-  return (await r.json()).result;
-}
+const pathFor = (login) => `trackers/${String(login).toLowerCase()}.json`;
 
 export async function getTracker(login) {
-  const v = await cmd(['GET', `tracker:${login.toLowerCase()}`]);
-  if (v == null) return seedTracker(login);
   try {
-    return JSON.parse(v);
+    // head() resolves the blob's authenticated URL; 404 -> no data yet.
+    const meta = await head(pathFor(login), { token: TOKEN });
+    const res = await fetch(meta.url, { headers: { authorization: `Bearer ${TOKEN}` } });
+    if (!res.ok) return seedTracker(login);
+    return await res.json();
   } catch {
+    // BlobNotFoundError (first-time user) or any read miss -> empty start.
     return seedTracker(login);
   }
 }
 
 export async function saveTracker(login, data) {
-  await cmd(['SET', `tracker:${login.toLowerCase()}`, JSON.stringify(data)]);
+  await put(pathFor(login), JSON.stringify(data), {
+    access: 'private',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    token: TOKEN,
+  });
   return data;
 }
