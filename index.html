@@ -180,8 +180,8 @@
     <div class="sep"></div>
     <button class="fk" id="msBtn"><span class="k">M</span>MILESTONES</button>
     <div class="sep"></div>
-    <button class="fk" id="addMeasBtn"><span class="k">＋</span>MEASUREMENT</button>
-    <button class="fk" id="addPinBtn"><span class="k">＋</span>INJECTION</button>
+    <button class="fk" id="addMeasBtn"><span class="k">A</span>MEASUREMENT</button>
+    <button class="fk" id="addPinBtn"><span class="k">I</span>INJECTION</button>
   </div>
 
   <div class="main">
@@ -216,7 +216,7 @@
 
   <div class="fkeys">
     <span>1-4 TOGGLE SERIES</span><span>VIEW ALL / BODY FAT</span><span>X-AXIS DAY / DATE</span>
-    <span>M MILESTONES</span><span style="margin-left:auto;color:var(--green)">● INBODY FEED</span>
+    <span>M MILESTONES</span><span>A ADD MEASUREMENT</span><span>I LOG INJECTION</span><span style="margin-left:auto;color:var(--green)">● INBODY FEED</span>
   </div>
 </div>
 
@@ -301,7 +301,16 @@ async function wireEntry(){
   document.getElementById('addPinBtn').onclick=()=>open(pinModal);
   document.querySelectorAll('[data-close]').forEach(el=>el.onclick=close);
   [measModal,pinModal].forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) close(); }));
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  // hotkeys: A = add measurement, I = log injection, Esc = close
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){ close(); return; }
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    if(e.target.matches && e.target.matches('input,select,textarea')) return;  // don't hijack typing
+    if(document.querySelector('.modal.show')) return;                          // a modal is already open
+    const k=e.key.toLowerCase();
+    if(k==='a'){ e.preventDefault(); open(measModal); }
+    else if(k==='i'){ e.preventDefault(); open(pinModal); }
+  });
 
   // peptide dropdown — sourced from /api/peptides
   try{
