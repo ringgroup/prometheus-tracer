@@ -62,6 +62,8 @@
   .fkeys{ display:flex; flex-wrap:wrap; background:#0e1118; border-top:1px solid #232b39; font-size:10px; }
   .fkeys span{ padding:5px 9px; border-right:1px solid #20262f; color:var(--dim); }
   canvas{ cursor:crosshair; }
+  .actionbar{ display:flex; gap:10px; justify-content:center; padding:12px; border-top:1px solid #232b39; background:#0c0e14; }
+  .actionbar button.fk{ font-size:12px; padding:9px 20px; }
 
   /* ===== login gate ===== */
   #loginScreen{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
@@ -189,9 +191,6 @@
     <button class="seg" id="xDate">DATE</button>
     <div class="sep"></div>
     <button class="fk" id="msBtn"><span class="k">M</span>MILESTONES</button>
-    <div class="sep"></div>
-    <button class="fk" id="addMeasBtn"><span class="k">A</span>MEASUREMENT</button>
-    <button class="fk" id="addPinBtn"><span class="k">I</span>INJECTION</button>
   </div>
 
   <div class="main">
@@ -220,6 +219,11 @@
       <div class="ro-row"><span class="k">Δ WEIGHT vs prev</span><span class="v" id="roDw">—</span></div>
       <div class="ms-list" id="msList"></div>
     </div>
+  </div>
+
+  <div class="actionbar">
+    <button class="fk" id="addMeasBtn"><span class="k">A</span>＋ MEASUREMENT</button>
+    <button class="fk" id="addPinBtn"><span class="k">I</span>＋ INJECTION</button>
   </div>
 
   <div class="datatable" id="dataTable"></div>
