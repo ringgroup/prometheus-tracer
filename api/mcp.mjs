@@ -73,16 +73,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST')
-    return res.status(405).json({ error: 'Prometheus Tracer MCP — use POST (Streamable HTTP).' });
 
-  let body = req.body;
-  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
-  if (!body) return res.status(400).json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
-
-  // resolve the bearer token -> github login. No valid token -> 401 with a
+  // Auth first (covers GET probes AND POST). No valid token -> 401 with a
   // WWW-Authenticate pointing at the protected-resource metadata, which triggers
-  // the client's OAuth flow (one-click connect). A pasted token also works.
+  // the client's OAuth sign-in (one-click connect). A pasted token also works.
   const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
   let login = null;
   try { login = await resolveKey(token); } catch { login = null; }
@@ -91,9 +85,15 @@ export default async function handler(req, res) {
       'WWW-Authenticate',
       `Bearer resource_metadata="${originFromRequest(req)}/.well-known/oauth-protected-resource"`,
     );
-    const id = (Array.isArray(body) ? null : body && body.id) ?? null;
-    return res.status(401).json({ jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized' } });
+    return res.status(401).json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } });
   }
+
+  if (req.method !== 'POST')
+    return res.status(405).json({ error: 'Prometheus Tracer MCP — use POST (Streamable HTTP).' });
+
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
+  if (!body) return res.status(400).json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
 
   const batch = Array.isArray(body);
   const msgs = batch ? body : [body];
