@@ -1,7 +1,8 @@
 // Per-user injection / "pin" log. POST adds an injection (peptide + mg, date
-// auto-captured); DELETE removes one. Stored as tracker.milestones entries.
+// auto-captured); DELETE removes one. Append-only storage (one blob per pin) —
+// see _store.mjs. Response built from getTracker() + in-memory mutation.
 import { getSession } from './_lib.mjs';
-import { getTracker, saveTracker, configured } from './_store.mjs';
+import { getTracker, putMilestone, delMilestone, configured } from './_store.mjs';
 import { recompute } from './_recompute.mjs';
 
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
@@ -19,7 +20,6 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: 'failed to load data' });
   }
-  data.milestones = data.milestones || [];
 
   if (req.method === 'POST') {
     const b = req.body || {};
@@ -35,20 +35,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Injection limit reached' });
 
     const label = `${peptide} ${mg} mg`;
-    // de-dupe an identical entry; `replaceDate`/`replaceLabel` removes the
-    // original when an edit changed it (single request, no stale re-read).
-    const rd = b.replaceDate ? String(b.replaceDate) : null;
+    const rd = b.replaceDate ? String(b.replaceDate) : null; // edited-from original
     const rl = b.replaceLabel != null ? String(b.replaceLabel) : null;
+
+    // accurate response: apply the mutation in memory
     data.milestones = data.milestones.filter((m) => {
       if (m.date === date && m.peptide === peptide && m.mg === mg) return false;
       if (rd && m.date === rd && (rl == null || m.label === rl)) return false;
       return true;
     });
-    data.milestones.push({ date, peptide, mg, label });
+    const pin = { date, peptide, mg, label };
+    data.milestones.push(pin);
     recompute(data);
 
+    // persist append-only: drop the edited original (if its key changed), write this pin
     try {
-      await saveTracker(s.login, data);
+      if (rd && !(rd === date && rl === label)) await delMilestone(s.login, rd, rl || undefined);
+      await putMilestone(s.login, pin);
     } catch (e) {
       return res.status(500).json({ error: 'failed to save' });
     }
@@ -59,12 +62,10 @@ export default async function handler(req, res) {
     const q = req.body || req.query || {};
     const date = String(q.date || '');
     const label = String(q.label || '');
-    data.milestones = data.milestones.filter(
-      (m) => !(m.date === date && (!label || m.label === label)),
-    );
+    data.milestones = data.milestones.filter((m) => !(m.date === date && (!label || m.label === label)));
     recompute(data);
     try {
-      await saveTracker(s.login, data);
+      await delMilestone(s.login, date, label || undefined);
     } catch (e) {
       return res.status(500).json({ error: 'failed to save' });
     }

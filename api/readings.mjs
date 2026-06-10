@@ -1,7 +1,9 @@
 // Per-user reading entry. POST adds/replaces a reading; DELETE removes one.
-// Date is auto-captured (defaults to "today" server-side if the client omits it).
+// Append-only storage (one blob per reading) — see _store.mjs. The response is
+// built from getTracker() + the in-memory mutation so it's correct even if the
+// just-written blob hasn't propagated to list() yet.
 import { getSession } from './_lib.mjs';
-import { getTracker, saveTracker, configured } from './_store.mjs';
+import { getTracker, putReading, delReading, configured } from './_store.mjs';
 import { recompute } from './_recompute.mjs';
 
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
@@ -19,9 +21,6 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: 'failed to load data' });
   }
-  data.rows = data.rows || [];
-  data.milestones = data.milestones || [];
-  data.goalLossKg = data.goalLossKg || 40;
 
   if (req.method === 'POST') {
     const b = req.body || {};
@@ -37,20 +36,18 @@ export default async function handler(req, res) {
     if (!ok(fat, 0, 100)) return res.status(400).json({ error: 'Body fat must be 0–100 %' });
     if (data.rows.length >= 2000) return res.status(400).json({ error: 'Reading limit reached' });
 
-    // same-date entry replaces the existing one; `replace` removes the original
-    // row when an edit changed its date (single request, no stale re-read).
-    const replace = b.replace ? String(b.replace) : null;
+    const replace = b.replace ? String(b.replace) : null; // original date when an edit moved it
+    const reading = { date, weight: +weight.toFixed(1), muscle: +muscle.toFixed(1), fat: +fat.toFixed(1) };
+
+    // accurate response: apply the mutation in memory
     data.rows = data.rows.filter((r) => r.date !== date && (!replace || r.date !== replace));
-    data.rows.push({
-      date,
-      weight: +weight.toFixed(1),
-      muscle: +muscle.toFixed(1),
-      fat: +fat.toFixed(1),
-    });
+    data.rows.push(reading);
     recompute(data);
 
+    // persist append-only: drop the moved original, write just this reading
     try {
-      await saveTracker(s.login, data);
+      if (replace && replace !== date) await delReading(s.login, replace);
+      await putReading(s.login, reading);
     } catch (e) {
       return res.status(500).json({ error: 'failed to save' });
     }
@@ -62,7 +59,7 @@ export default async function handler(req, res) {
     data.rows = data.rows.filter((r) => r.date !== date);
     recompute(data);
     try {
-      await saveTracker(s.login, data);
+      await delReading(s.login, date);
     } catch (e) {
       return res.status(500).json({ error: 'failed to save' });
     }
