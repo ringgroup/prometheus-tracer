@@ -6,8 +6,11 @@
 <title>Prometheus Tracer — Body Composition Terminal</title>
 <link rel="icon" type="image/png" href="/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#06070a">
 <meta property="og:image" content="/logo.png">
 <meta property="og:title" content="Prometheus Tracer">
+<meta property="og:description" content="Body-composition terminal — a Ring Labs product.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
@@ -92,6 +95,10 @@
   .ghbtn svg{ width:18px; height:18px; }
   .loginbox .err{ color:var(--red); font-size:11px; margin-top:18px; min-height:14px; }
   .loginbox .note{ color:var(--dim); font-size:10px; margin-top:22px; line-height:1.6; }
+  .loginbox .legal{ color:var(--dim); font-size:10px; margin-top:16px; letter-spacing:.5px; }
+  .loginbox .legal a{ color:var(--dim); } .loginbox .legal a:hover{ color:var(--amber); }
+  .appfoot{ text-align:center; color:var(--dim); font-size:10px; letter-spacing:1px; padding:16px 10px 4px; }
+  .appfoot a{ color:var(--dim); text-decoration:none; } .appfoot a:hover{ color:var(--amber); }
   #app{ display:none; }
 
   /* ===== data-entry modals (cards) ===== */
@@ -166,6 +173,7 @@
     </a>
     <div class="err" id="loginErr"></div>
     <div class="note">Private body-composition data.<br>Only authorized GitHub accounts may view this terminal.</div>
+    <div class="legal">A <b>Ring&nbsp;Labs</b> product · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
   </div>
 </div>
 
@@ -249,6 +257,8 @@
     <span>M MILESTONES</span><span>A ADD MEASUREMENT</span><span>I LOG INJECTION</span><span style="margin-left:auto;color:var(--green)">● INBODY FEED</span>
   </div>
 </div>
+
+<div class="appfoot">A Ring Labs product · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
 
 <!-- ===== data-entry modals ===== -->
 <div class="modal" id="measModal">
