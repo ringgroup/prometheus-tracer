@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect your AI — Prometheus Tracer</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<meta name="theme-color" content="#06070a">
+<style>
+  :root{ --bg:#06070a; --panel:#0c0e14; --amber:#ffb43a; --amber2:#ffce86; --txt:#ece9e3; --dim:#9aa3b2; --line:#232b39; --cyan:#41d4ff; --green:#34e39b; }
+  *{ box-sizing:border-box; }
+  body{ font-family:"Consolas","Menlo","Monaco",monospace; background:radial-gradient(1100px 560px at 50% -8%, #141a24, #06070a 62%); color:var(--txt); margin:0; padding:40px 18px; line-height:1.6; }
+  .wrap{ max-width:640px; margin:0 auto; }
+  .head{ text-align:center; margin-bottom:30px; }
+  .head img{ width:64px; height:64px; }
+  .head .t{ color:var(--amber); font-weight:700; letter-spacing:2px; font-size:18px; margin-top:10px; }
+  .head .s{ color:var(--dim); font-size:12px; letter-spacing:1px; text-transform:uppercase; margin-top:4px; }
+  h1{ font-size:24px; text-align:center; margin:0 0 4px; }
+  .lead{ text-align:center; color:var(--dim); font-size:13px; margin-bottom:28px; }
+
+  .urlcard{ border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:16px; margin-bottom:28px; }
+  .urlcard .lbl{ font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .urlrow{ display:flex; gap:8px; }
+  .urlrow input{ flex:1; min-width:0; background:#000; border:1px solid var(--line); color:var(--amber); font-family:inherit; font-size:14px; padding:11px 12px; border-radius:4px; }
+  .copy{ font-family:inherit; font-weight:700; cursor:pointer; color:#000; background:linear-gradient(180deg,var(--amber2),var(--amber)); border:none; padding:0 18px; border-radius:4px; font-size:13px; }
+  .copy:hover{ filter:brightness(1.08); }
+
+  .step{ display:flex; gap:14px; margin-bottom:18px; align-items:flex-start; }
+  .step .n{ flex:none; width:26px; height:26px; border-radius:50%; background:#1a1e27; border:1px solid var(--line); color:var(--amber); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .step .b{ font-size:14px; }
+  .step .b b{ color:var(--txt); }
+  .step .b .m{ color:var(--dim); font-size:12.5px; }
+  .btn{ display:inline-block; margin-top:7px; text-decoration:none; color:#000; background:var(--amber); font-weight:700; font-size:12px; padding:7px 14px; border-radius:4px; }
+  .btn:hover{ background:var(--amber2); }
+  .btn.alt{ color:var(--cyan); background:transparent; border:1px solid var(--line); }
+  .pill{ background:#1a1e27; border:1px solid var(--line); border-radius:3px; padding:1px 6px; color:var(--amber); }
+
+  .note{ border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:14px 16px; color:var(--dim); font-size:12px; margin-top:24px; line-height:1.7; }
+  .note b{ color:var(--green); }
+  .foot{ margin-top:30px; text-align:center; color:var(--dim); font-size:11px; }
+  a{ color:var(--cyan); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <img src="/logo.png" alt="">
+    <div class="t">PROMETHEUS TRACER</div>
+    <div class="s">A Ring Labs product</div>
+  </div>
+
+  <h1>Connect your AI</h1>
+  <p class="lead">Let Claude (or ChatGPT) read your tracker. Takes ~30 seconds — no install, no token.</p>
+
+  <div class="urlcard">
+    <div class="lbl">Your connector link</div>
+    <div class="urlrow">
+      <input id="url" readonly value="https://prometheus-tracer.vercel.app/api/mcp">
+      <button class="copy" id="copy">Copy</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="n">1</div>
+    <div class="b"><b>Copy the link above.</b><div class="m">That's the only thing you need — it's the same for everyone.</div></div>
+  </div>
+  <div class="step">
+    <div class="n">2</div>
+    <div class="b"><b>Open your AI's connector settings.</b>
+      <div class="m">Claude (web or desktop / Cowork): <span class="pill">Settings → Connectors</span>. ChatGPT: <span class="pill">Settings → Connectors</span> (Pro/Business).</div>
+      <a class="btn" href="https://claude.ai/settings/connectors" target="_blank" rel="noreferrer">Open Claude Connectors ↗</a>
+    </div>
+  </div>
+  <div class="step">
+    <div class="n">3</div>
+    <div class="b"><b>Add custom connector → paste the link → Connect.</b>
+      <div class="m">You'll be asked to <b style="color:var(--amber)">sign in with GitHub</b> — that's it. Your tracker's tools then appear in your AI.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Safe by design:</b> read-only access to <i>your own</i> data, you sign in with your own GitHub, and you can disconnect anytime from the same settings screen. Prefer a manual API token instead? Open <b style="color:var(--amber)">⚡ Connect AI</b> inside the app.
+  </div>
+
+  <div class="foot"><a href="/">← Back to Prometheus Tracer</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
+</div>
+
+<script>
+  document.getElementById('copy').onclick = () => {
+    const u = document.getElementById('url'); u.select();
+    try { navigator.clipboard.writeText(u.value); } catch(e) {}
+    const b = document.getElementById('copy'); b.textContent = 'Copied ✓';
+    setTimeout(() => b.textContent = 'Copy', 1400);
+  };
+</script>
+</body>
+</html>
