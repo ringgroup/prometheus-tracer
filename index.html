@@ -297,12 +297,17 @@
   <div class="modalbox">
     <div class="mhead"><span class="tick">⚡ CONNECT YOUR AI · MCP</span><span class="x" data-close>ESC ✕</span></div>
     <div class="mbody">
-      <a href="/connect" target="_blank" style="display:block;text-align:center;background:linear-gradient(180deg,var(--amber2),var(--amber));color:#000;font-weight:700;text-decoration:none;letter-spacing:.5px;padding:10px;border-radius:5px;margin-bottom:16px;">★ EASY SETUP GUIDE (FOR ANYONE) →</a>
+      <div style="color:var(--dim);font-size:11px;margin-bottom:10px;">① <b style="color:var(--amber)">Easiest — paste this link to any AI</b> (no setup, no sign-in):</div>
+      <div class="connect-row"><label>AI data link</label><input id="mcpFeed" readonly placeholder="— generate below —"><button type="button" class="rowact" data-copy="mcpFeed">copy</button></div>
+      <div class="mactions" style="margin-top:8px"><button type="button" class="save" id="genToken">GENERATE LINK</button><button type="button" class="cancel" id="revokeToken">REVOKE</button></div>
+      <div class="merr" id="connectMsg" style="color:var(--green)"></div>
+
+      <div style="color:var(--dim);font-size:11px;margin:18px 0 10px;border-top:1px solid #232b39;padding-top:14px;">② <b>Or add as a connector (MCP)</b> for native tools:</div>
       <div class="connect-row"><label>MCP URL</label><input id="mcpUrl" readonly><button type="button" class="rowact" data-copy="mcpUrl">copy</button></div>
       <div class="connect-row"><label>Token · optional</label><input id="mcpToken" readonly placeholder="— not needed for one-click —"><button type="button" class="rowact" data-copy="mcpToken">copy</button></div>
-      <div class="mactions"><button type="button" class="save" id="genToken">GENERATE TOKEN</button><button type="button" class="cancel" id="revokeToken">REVOKE</button></div>
-      <div class="merr" id="connectMsg" style="color:var(--green)"></div>
-      <div class="cnote"><b style="color:var(--amber)">One-click:</b> add the <b>MCP URL</b> as a remote connector in your AI (Claude · Cowork · ChatGPT). It sends you through a quick GitHub sign-in — <b>no token needed</b>.<br><br><b>Manual (optional):</b> if a client only takes a token, generate one above and use it as a <b>Bearer</b> header. Either way it's <b>read-only</b> access to your own data — revoke anytime.</div>
+      <a href="/connect" target="_blank" style="display:inline-block;color:var(--cyan);font-size:11px;margin-top:4px;">Step-by-step connector guide →</a>
+
+      <div class="cnote"><b style="color:var(--amber)">Data link</b> = the simplest: copy it and tell your AI “read my data: ‹link›”. Works in Claude · ChatGPT · Cowork · scripts. <b>Read-only</b> access to your own data; anyone with the link can read it, so <b>revoke</b> anytime. Add <code>&amp;format=md</code> for a Markdown summary.</div>
     </div>
   </div>
 </div>
@@ -376,13 +381,17 @@ async function wireEntry(){
   const connectModal=document.getElementById('connectModal');
   const mcpUrlEl=document.getElementById('mcpUrl'); if(mcpUrlEl) mcpUrlEl.value=location.origin+'/api/mcp';
   const setMsg=(t)=>{ const e=document.getElementById('connectMsg'); if(e) e.textContent=t||''; };
-  const loadToken=async()=>{ setMsg(''); try{ const t=await (await fetch('/api/token')).json(); document.getElementById('mcpToken').value=t.token||''; }catch{} };
+  const setToken=(tok)=>{
+    document.getElementById('mcpToken').value = tok || '';
+    document.getElementById('mcpFeed').value = tok ? (location.origin + '/api/feed?key=' + tok) : '';
+  };
+  const loadToken=async()=>{ setMsg(''); try{ const t=await (await fetch('/api/token')).json(); setToken(t.token); }catch{} };
   const cBtn=document.getElementById('connectBtn');
   if(cBtn) cBtn.onclick=()=>{ loadToken(); connectModal.classList.add('show'); };
   const gen=document.getElementById('genToken');
-  if(gen) gen.onclick=async()=>{ setMsg('…'); try{ const t=await (await fetch('/api/token',{method:'POST'})).json(); document.getElementById('mcpToken').value=t.token||''; setMsg('New token generated — any previous one is now revoked.'); }catch{ setMsg('Failed to generate.'); } };
+  if(gen) gen.onclick=async()=>{ setMsg('…'); try{ const t=await (await fetch('/api/token',{method:'POST'})).json(); setToken(t.token); setMsg('Link ready — copy it and paste to your AI. (Any previous link is now revoked.)'); }catch{ setMsg('Failed to generate.'); } };
   const rev=document.getElementById('revokeToken');
-  if(rev) rev.onclick=async()=>{ try{ await fetch('/api/token',{method:'DELETE'}); document.getElementById('mcpToken').value=''; setMsg('Token revoked.'); }catch{} };
+  if(rev) rev.onclick=async()=>{ try{ await fetch('/api/token',{method:'DELETE'}); setToken(''); setMsg('Revoked. Existing links no longer work.'); }catch{} };
   document.querySelectorAll('#connectModal [data-copy]').forEach(b=>b.onclick=()=>{
     const el=document.getElementById(b.dataset.copy); if(!el||!el.value) return;
     el.select&&el.select(); try{ navigator.clipboard&&navigator.clipboard.writeText(el.value); }catch{}
