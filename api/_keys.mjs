@@ -62,6 +62,14 @@ export async function revokeKey(login) {
   await delPath(metaPath(login));
 }
 
+// Issue an additional token WITHOUT revoking others (used by the OAuth token
+// endpoint — a user may connect several AI clients, each gets its own token).
+export async function issueToken(login) {
+  const token = crypto.randomBytes(24).toString('hex');
+  await put(keyPath(token), JSON.stringify({ login, created: new Date().toISOString(), via: 'oauth' }), opts);
+  return token;
+}
+
 // token -> github login (or null)
 export async function resolveKey(token) {
   if (!token || !/^[a-f0-9]{32,}$/.test(token)) return null;

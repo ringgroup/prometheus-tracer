@@ -80,8 +80,17 @@ export default async function handler(req, res) {
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
     });
 
-    res.setHeader('Set-Cookie', [sessionCookie(token), 'pt_oauth_state=; Path=/; Max-Age=0']);
-    res.writeHead(302, { Location: '/' });
+    // honor a same-site return path (OAuth authorize bounce), else home
+    let dest = '/';
+    const ret = cookies.pt_return ? decodeURIComponent(cookies.pt_return) : '';
+    if (ret && ret.startsWith('/')) dest = ret;
+
+    res.setHeader('Set-Cookie', [
+      sessionCookie(token),
+      'pt_oauth_state=; Path=/; Max-Age=0',
+      'pt_return=; Path=/; Max-Age=0',
+    ]);
+    res.writeHead(302, { Location: dest });
     res.end();
   } catch (err) {
     deny(res, 500, 'Unexpected error during sign-in.');

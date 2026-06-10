@@ -4,6 +4,7 @@
 // intentionally not exposed yet — planned as a paid feature.)
 import { resolveKey } from './_keys.mjs';
 import { getTracker } from './_store.mjs';
+import { originFromRequest } from './_lib.mjs';
 
 const PROTO = '2025-06-18';
 const SERVER = { name: 'prometheus-tracer', version: '1.0.0' };
@@ -79,10 +80,20 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
   if (!body) return res.status(400).json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
 
-  // resolve the bearer token -> github login (used by tools/call)
+  // resolve the bearer token -> github login. No valid token -> 401 with a
+  // WWW-Authenticate pointing at the protected-resource metadata, which triggers
+  // the client's OAuth flow (one-click connect). A pasted token also works.
   const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
   let login = null;
   try { login = await resolveKey(token); } catch { login = null; }
+  if (!login) {
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer resource_metadata="${originFromRequest(req)}/.well-known/oauth-protected-resource"`,
+    );
+    const id = (Array.isArray(body) ? null : body && body.id) ?? null;
+    return res.status(401).json({ jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized' } });
+  }
 
   const batch = Array.isArray(body);
   const msgs = batch ? body : [body];
