@@ -178,6 +178,7 @@
     <div class="cell"><div class="lbl">Muscle</div><div class="val up" id="hMu">—<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)" id="hMuChg"></div></div>
     <div class="cell feat"><div class="lbl">▼ Total Lost</div><div class="val" style="color:#ffd633" id="hLost">—<span style="font-size:11px"> KG</span></div><div class="chg" style="color:var(--dim)" id="hGoal"></div></div>
     <div class="cell"><div class="lbl">Day</div><div class="val" id="hDay">—</div><div class="chg" style="color:var(--dim)">since 1st inj.</div></div>
+    <div class="cell feat"><div class="lbl">◆ Last Inj</div><div class="val neon" id="hLastInj">—</div><div class="chg" style="color:var(--dim)" id="hLastInjLbl">days since pin</div></div>
   </div>
 
   <div class="ctrl">
@@ -402,6 +403,18 @@ function boot(DATA){
   // milestone list in sidebar
   document.getElementById('msList').innerHTML = '<div style="color:var(--amber);font-size:10px;letter-spacing:1px;margin-bottom:4px;">◆ KEY DATES</div>' +
     DATA.milestones.map(m=>`<div class="mi"><b>D${m.day}</b><span>${m.label}</span></div>`).join('');
+
+  // days since last injection (today − most recent pin)
+  (function(){
+    const li=document.getElementById('hLastInj'), lbl=document.getElementById('hLastInjLbl');
+    if(!li) return;
+    if(DATA.milestones && DATA.milestones.length){
+      const lastDate=DATA.milestones.reduce((a,m)=> Date.parse(m.date)>Date.parse(a)?m.date:a, DATA.milestones[0].date);
+      const days=Math.max(0, Math.round((Date.now()-Date.parse(lastDate+'T00:00:00'))/86400000));
+      li.textContent=days;
+      if(lbl) lbl.textContent=(days===1?'day':'days')+' · '+lastDate;
+    } else { li.textContent='—'; if(lbl) lbl.textContent='no injections yet'; }
+  })();
 
   // header summary (latest vs baseline) — only when there are readings
   document.getElementById('goalTarget').textContent='TARGET '+GOAL+' KG';
