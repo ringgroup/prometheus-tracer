@@ -43,8 +43,28 @@ Session = an HttpOnly, Secure, SameSite=Lax cookie (`pt_session`) holding a
 JSON payload signed with HMAC-SHA256 (`SESSION_SECRET`). `ALLOWED_GITHUB_USERS`
 (comma-separated) optionally restricts who may sign in; empty = any GitHub user.
 Env vars: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`,
-`KV_REST_API_URL`, `KV_REST_API_TOKEN` (auto-injected by Vercel KV). The OAuth
-App callback URL must be `https://<domain>/api/callback`.
+`BLOB_READ_WRITE_TOKEN` (auto-injected by Vercel Blob). The OAuth App callback
+URL must be `https://<domain>/api/callback`.
+
+## Storage (Vercel Blob, append-only)
+Per-user data lives in private Vercel Blob objects — ONE blob per entry so adds
+never rewrite the whole set (this fixed a read-modify-write data-loss bug):
+`t/<login>/r/<date>.json` (readings), `t/<login>/m/<date>__<slug(label)>.json`
+(injections). `getTracker` lists + assembles; handlers persist single entries
+and return getTracker()+in-memory mutation for an accurate immediate response.
+The frontend stashes that response in sessionStorage across the post-save
+reload (Blob reads are eventually-consistent/edge-cached).
+
+## Remote MCP + API (read-only)
+- `api/mcp.mjs` — remote MCP server (Streamable-HTTP JSON-RPC) at `/api/mcp`.
+  Auth: `Authorization: Bearer <personal token>`. Tools (read-only):
+  `get_tracker`, `get_stats`, `list_readings`, `list_injections`. Writes are
+  intentionally NOT exposed (planned paid feature).
+- `api/token.mjs` + `api/_keys.mjs` — per-user revocable API tokens (one active
+  per user) in Blob: `keys/<token>.json` (token→login), `keymeta/<login>.json`.
+  Session-auth: GET status / POST (re)generate / DELETE revoke.
+- UI: "⚡ CONNECT AI" in the command bar opens a modal with the MCP URL + token
+  (generate/revoke/copy).
 
 ## Tech stack
 - Vanilla HTML/CSS/JS. Monospace Bloomberg aesthetic (amber `#ff8c00`, black bg).
