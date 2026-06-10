@@ -8,7 +8,7 @@
 <style>
   :root{
     --bg:#06070a; --panel:#0c0e14; --grid:#1a1e27; --amber:#ffb43a; --amber2:#ffce86;
-    --green:#34e39b; --red:#ff5d77; --cyan:#41d4ff; --violet:#bb8dff; --txt:#ece9e3; --dim:#828b99;
+    --green:#34e39b; --red:#ff5d77; --cyan:#41d4ff; --violet:#bb8dff; --neon:#eaff00; --txt:#ece9e3; --dim:#828b99;
   }
   *{ box-sizing:border-box; }
   body{ font-family:"Consolas","Menlo","Monaco",monospace; background:radial-gradient(1100px 560px at 50% -8%, #141a24, #06070a 62%); color:var(--txt); margin:0; padding:22px 14px; min-height:100vh; }
@@ -28,7 +28,7 @@
   .hdr .lbl{ font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
   .hdr .val{ font-size:22px; font-weight:700; line-height:1.2; }
   .hdr .chg{ font-size:11px; }
-  .up{ color:var(--green); } .dn{ color:var(--red); } .amber{ color:var(--amber); } .cyan{ color:var(--cyan); } .violet{ color:var(--violet); }
+  .up{ color:var(--green); } .dn{ color:var(--red); } .amber{ color:var(--amber); } .cyan{ color:var(--cyan); } .violet{ color:var(--violet); } .neon{ color:var(--neon); }
 
   /* control bar */
   .ctrl{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 10px; border-bottom:1px solid #232b39; background:#0c0e14; }
@@ -57,7 +57,7 @@
   .bar{ height:7px; background:#1a1e27; border:1px solid #232b39; border-radius:4px; overflow:hidden; margin-top:5px; }
   .bar .fill{ height:100%; background:linear-gradient(90deg,#ffb43a,#ffd633); transition:width .4s; }
   .ms-list{ margin-top:10px; border-top:1px solid #232b39; padding-top:8px; }
-  .ms-list .mi{ display:flex; gap:8px; padding:2px 0; color:var(--violet); font-size:10px; }
+  .ms-list .mi{ display:flex; gap:8px; padding:2px 0; color:var(--neon); font-size:10px; }
   .ms-list .mi b{ color:var(--dim); min-width:42px; }
   .fkeys{ display:flex; flex-wrap:wrap; background:#0e1118; border-top:1px solid #232b39; font-size:10px; }
   .fkeys span{ padding:5px 9px; border-right:1px solid #20262f; color:var(--dim); }
@@ -430,14 +430,16 @@ function boot(DATA){
     afterDraw(c){
       if(!showMilestones) return;
       const x=c.scales.x, a=c.chartArea, ctx=c.ctx;
+      const seen={};
       DATA.milestones.forEach(m=>{
         const px=x.getPixelForValue(m.day);
         if(px<a.left-1||px>a.right+1) return;
+        const idx=(seen[m.day]||0); seen[m.day]=idx+1;          // stack same-day labels side by side
         ctx.save();
         ctx.beginPath(); ctx.moveTo(px,a.top); ctx.lineTo(px,a.bottom);
-        ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.strokeStyle='rgba(187,141,255,.55)'; ctx.stroke();
-        ctx.setLineDash([]); ctx.fillStyle='#bb8dff'; ctx.font='9px monospace';
-        ctx.save(); ctx.translate(px+3,a.top+4); ctx.rotate(Math.PI/2);
+        ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.strokeStyle='rgba(234,255,0,.6)'; ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle='#eaff00'; ctx.font='9px monospace';
+        ctx.save(); ctx.translate(px+3+idx*11, a.top+4); ctx.rotate(Math.PI/2);
         ctx.fillText(m.label, 0, 0); ctx.restore();
         ctx.restore();
       });
@@ -618,7 +620,7 @@ function boot(DATA){
         `<div class="dt-scroll" style="max-height:170px"><table class="tape"><thead><tr>`+
           `<th>Date</th><th>Day</th><th class="l">Peptide</th><th>Dose</th><th></th></tr></thead><tbody>`+
         ms.map(m=>`<tr><td class="cyan">${fmtDate(m.date)}</td><td class="dim">D${m.day}</td>`+
-          `<td class="l violet">${m.peptide||m.label||'—'}</td>`+
+          `<td class="l neon">${m.peptide||m.label||'—'}</td>`+
           `<td class="amber">${m.mg!=null?m.mg+' mg':''}</td>`+
           `<td class="acts"><button class="rowact" data-edit="pin" data-date="${m.date}" data-label="${(m.label||'').replace(/"/g,'&quot;')}" title="Edit">✎</button>`+
           `<button class="rowact del" data-del="pin" data-date="${m.date}" data-label="${(m.label||'').replace(/"/g,'&quot;')}" title="Delete">✕</button></td></tr>`).join('')+
