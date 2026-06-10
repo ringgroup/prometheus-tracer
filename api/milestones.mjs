@@ -35,10 +35,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Injection limit reached' });
 
     const label = `${peptide} ${mg} mg`;
-    // de-dupe an identical entry on the same day
-    data.milestones = data.milestones.filter(
-      (m) => !(m.date === date && m.peptide === peptide && m.mg === mg),
-    );
+    // de-dupe an identical entry; `replaceDate`/`replaceLabel` removes the
+    // original when an edit changed it (single request, no stale re-read).
+    const rd = b.replaceDate ? String(b.replaceDate) : null;
+    const rl = b.replaceLabel != null ? String(b.replaceLabel) : null;
+    data.milestones = data.milestones.filter((m) => {
+      if (m.date === date && m.peptide === peptide && m.mg === mg) return false;
+      if (rd && m.date === rd && (rl == null || m.label === rl)) return false;
+      return true;
+    });
     data.milestones.push({ date, peptide, mg, label });
     recompute(data);
 

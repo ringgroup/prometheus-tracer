@@ -37,8 +37,10 @@ export default async function handler(req, res) {
     if (!ok(fat, 0, 100)) return res.status(400).json({ error: 'Body fat must be 0–100 %' });
     if (data.rows.length >= 2000) return res.status(400).json({ error: 'Reading limit reached' });
 
-    // same-date entry replaces the existing one
-    data.rows = data.rows.filter((r) => r.date !== date);
+    // same-date entry replaces the existing one; `replace` removes the original
+    // row when an edit changed its date (single request, no stale re-read).
+    const replace = b.replace ? String(b.replace) : null;
+    data.rows = data.rows.filter((r) => r.date !== date && (!replace || r.date !== replace));
     data.rows.push({
       date,
       weight: +weight.toFixed(1),

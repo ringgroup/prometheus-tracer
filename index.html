@@ -64,6 +64,11 @@
   canvas{ cursor:crosshair; }
   .actionbar{ display:flex; gap:10px; justify-content:center; padding:12px; border-top:1px solid #232b39; background:#0c0e14; }
   .actionbar button.fk{ font-size:12px; padding:9px 20px; }
+  table.tape td.acts{ white-space:nowrap; text-align:right; }
+  .rowact{ font-family:inherit; cursor:pointer; background:#1a1e27; border:1px solid #232b39; color:var(--dim);
+    border-radius:3px; padding:1px 7px; margin-left:4px; font-size:11px; line-height:1.4; }
+  .rowact:hover{ color:var(--amber); border-color:#4b3a13; }
+  .rowact.del:hover{ color:var(--red); border-color:#5a2330; }
 
   /* ===== login gate ===== */
   #loginScreen{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
@@ -319,7 +324,12 @@ function renderEmpty(){
 async function wireEntry(){
   const measModal=document.getElementById('measModal'), pinModal=document.getElementById('pinModal');
   const today=()=> new Date().toISOString().slice(0,10);
-  const open=(m)=>{ const d=m.querySelector('input[name=date]'); if(d){ d.min='2023-01-01'; d.max=today(); if(!d.value) d.value=today(); } m.classList.add('show');
+  const open=(m)=>{
+    const form=m.querySelector('form');
+    if(form){ form.reset(); delete form.dataset.replace; delete form.dataset.replaceDate; delete form.dataset.replaceLabel; }
+    m.querySelector('.mhead .tick').textContent = (m.id==='measModal') ? '◆ ADD MEASUREMENT' : '◆ LOG INJECTION / PIN';
+    const d=m.querySelector('input[name=date]'); if(d){ d.min='2023-01-01'; d.max=today(); d.value=today(); }
+    m.classList.add('show');
     const first=m.querySelector('select,input'); if(first) setTimeout(()=>first.focus(),40); };
   const close=()=>{ measModal.classList.remove('show'); pinModal.classList.remove('show'); };
   document.getElementById('addMeasBtn').onclick=()=>open(measModal);
@@ -358,7 +368,7 @@ async function wireEntry(){
       const err=document.getElementById(errId); err.textContent='';
       const btn=e.target.querySelector('.save'); btn.disabled=true;
       try{
-        const r=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(build(new FormData(e.target))) });
+        const r=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(build(new FormData(e.target), e.target)) });
         if(r.ok){ const updated=await r.json().catch(()=>null); if(updated) sessionStorage.setItem('pt_fresh', JSON.stringify(updated)); location.reload(); return; }
         const j=await r.json().catch(()=>({})); err.textContent=j.error||'Failed to save';
       }catch{ err.textContent='Network error'; }
@@ -366,9 +376,9 @@ async function wireEntry(){
     });
   };
   wire('measForm','/api/readings','measErr',
-    f=>({ date:f.get('date')||undefined, weight:+f.get('weight'), muscle:+f.get('muscle'), fat:+f.get('fat') }));
+    (f,form)=>({ date:f.get('date')||undefined, weight:+f.get('weight'), muscle:+f.get('muscle'), fat:+f.get('fat'), replace:(form.dataset.replace||undefined) }));
   wire('pinForm','/api/milestones','pinErr',
-    f=>({ date:f.get('date')||undefined, peptide:f.get('peptide'), mg:+f.get('mg') }));
+    (f,form)=>({ date:f.get('date')||undefined, peptide:f.get('peptide'), mg:+f.get('mg'), replaceDate:(form.dataset.replaceDate||undefined), replaceLabel:(form.dataset.replaceLabel||undefined) }));
 }
 
 function showLogin(){
@@ -536,6 +546,37 @@ function boot(DATA){
   });
   if(hasRows) upd(DATA.rows.length-1);
 
+  // ---- row edit / delete ----
+  const today2 = () => new Date().toISOString().slice(0,10);
+  function editRow(ds){
+    if(ds.edit==='meas'){
+      const row=DATA.rows.find(r=>r.date===ds.date); if(!row) return;
+      const m=document.getElementById('measModal'), f=document.getElementById('measForm');
+      f.weight.value=row.weight; f.muscle.value=row.muscle; f.fat.value=row.fat;
+      f.date.min='2023-01-01'; f.date.max=today2(); f.date.value=row.date; f.dataset.replace=row.date;
+      m.querySelector('.mhead .tick').textContent='◆ EDIT MEASUREMENT';
+      m.classList.add('show'); setTimeout(()=>f.weight.focus(),40);
+    } else {
+      const mi=DATA.milestones.find(x=>x.date===ds.date && (x.label||'')===(ds.label||'')); if(!mi) return;
+      const m=document.getElementById('pinModal'), f=document.getElementById('pinForm');
+      f.peptide.value=mi.peptide||''; f.mg.value=mi.mg!=null?mi.mg:'';
+      f.date.min='2023-01-01'; f.date.max=today2(); f.date.value=mi.date;
+      f.dataset.replaceDate=mi.date; f.dataset.replaceLabel=mi.label||'';
+      m.querySelector('.mhead .tick').textContent='◆ EDIT INJECTION';
+      m.classList.add('show'); setTimeout(()=>f.peptide.focus(),40);
+    }
+  }
+  async function delRow(ds){
+    const kind=ds.del;
+    if(!confirm('Delete this '+(kind==='meas'?'measurement':'injection')+'?')) return;
+    const url=kind==='meas'?'/api/readings':'/api/milestones';
+    const body=kind==='meas'?{date:ds.date}:{date:ds.date,label:ds.label};
+    try{
+      const r=await fetch(url,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(r.ok){ const u=await r.json().catch(()=>null); if(u) sessionStorage.setItem('pt_fresh',JSON.stringify(u)); location.reload(); }
+    }catch{}
+  }
+
   // ===== Bloomberg-style data tape under the chart =====
   (function renderTable(){
     const rows=[...DATA.rows];                       // chronological
@@ -553,7 +594,7 @@ function boot(DATA){
       `<div class="dt-h">◧ MEASUREMENT TAPE — ${rows.length} READING${rows.length===1?'':'S'}</div>`+
       `<div class="dt-scroll"><table class="tape"><thead><tr>`+
         `<th>Date</th><th>Day</th><th>Weight</th><th>Δ Wt</th><th>Body Fat</th><th>Δ Fat</th>`+
-        `<th>Fat Mass</th><th>Muscle</th><th>Lost</th><th>% Goal</th>`+
+        `<th>Fat Mass</th><th>Muscle</th><th>Lost</th><th>% Goal</th><th></th>`+
       `</tr></thead><tbody>`+
       body.map(({r,dW,dF,pct,latest})=>`<tr class="${latest?'latest':''}">`+
         `<td class="cyan">${fmtDate(r.date)}</td>`+
@@ -565,7 +606,9 @@ function boot(DATA){
         `<td class="cyan">${r.fatMass.toFixed(1)}</td>`+
         `<td class="up">${r.muscle.toFixed(1)}</td>`+
         `<td class="gold">${r.lost.toFixed(1)}</td>`+
-        `<td class="dim">${pct}%</td></tr>`).join('')+
+        `<td class="dim">${pct}%</td>`+
+        `<td class="acts"><button class="rowact" data-edit="meas" data-date="${r.date}" title="Edit">✎</button>`+
+        `<button class="rowact del" data-del="meas" data-date="${r.date}" title="Delete">✕</button></td></tr>`).join('')+
       `</tbody></table></div>`;
 
     if(DATA.milestones && DATA.milestones.length){
@@ -573,13 +616,17 @@ function boot(DATA){
       html +=
         `<div class="dt-h" style="border-top:1px solid #232b39">◆ INJECTION LOG — ${DATA.milestones.length} PIN${DATA.milestones.length===1?'':'S'}</div>`+
         `<div class="dt-scroll" style="max-height:170px"><table class="tape"><thead><tr>`+
-          `<th>Date</th><th>Day</th><th class="l">Peptide</th><th>Dose</th></tr></thead><tbody>`+
+          `<th>Date</th><th>Day</th><th class="l">Peptide</th><th>Dose</th><th></th></tr></thead><tbody>`+
         ms.map(m=>`<tr><td class="cyan">${fmtDate(m.date)}</td><td class="dim">D${m.day}</td>`+
           `<td class="l violet">${m.peptide||m.label||'—'}</td>`+
-          `<td class="amber">${m.mg!=null?m.mg+' mg':''}</td></tr>`).join('')+
+          `<td class="amber">${m.mg!=null?m.mg+' mg':''}</td>`+
+          `<td class="acts"><button class="rowact" data-edit="pin" data-date="${m.date}" data-label="${(m.label||'').replace(/"/g,'&quot;')}" title="Edit">✎</button>`+
+          `<button class="rowact del" data-del="pin" data-date="${m.date}" data-label="${(m.label||'').replace(/"/g,'&quot;')}" title="Delete">✕</button></td></tr>`).join('')+
         `</tbody></table></div>`;
     }
     document.getElementById('dataTable').innerHTML=html;
+    document.querySelectorAll('#dataTable [data-edit]').forEach(b=>b.onclick=()=>editRow(b.dataset));
+    document.querySelectorAll('#dataTable [data-del]').forEach(b=>b.onclick=()=>delRow(b.dataset));
   })();
 
   const ALL=[chartTop,chartBot]; const drawAll=()=>ALL.forEach(c=>c.update());
