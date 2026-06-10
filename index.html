@@ -299,8 +299,9 @@ tick(); setInterval(tick,1000);
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   wireEntry();                                  // data-entry modals (always available)
-  if(DATA.rows && DATA.rows.length) boot(DATA); // build charts only when there's data
-  else renderEmpty();                           // brand-new users start at 0
+  const hasData = (DATA.rows && DATA.rows.length) || (DATA.milestones && DATA.milestones.length);
+  if(hasData) boot(DATA);     // render once there are readings OR injections
+  else renderEmpty();         // brand-new users start at 0
 })();
 
 // brand-new account: no readings yet
@@ -318,8 +319,8 @@ function renderEmpty(){
 async function wireEntry(){
   const measModal=document.getElementById('measModal'), pinModal=document.getElementById('pinModal');
   const today=()=> new Date().toISOString().slice(0,10);
-  const open=(m)=>{ const d=m.querySelector('input[name=date]'); if(d && !d.value) d.value=today(); m.classList.add('show');
-    const first=m.querySelector('input,select'); if(first) setTimeout(()=>first.focus(),30); };
+  const open=(m)=>{ const d=m.querySelector('input[name=date]'); if(d){ d.min='2023-01-01'; d.max=today(); if(!d.value) d.value=today(); } m.classList.add('show');
+    const first=m.querySelector('select,input'); if(first) setTimeout(()=>first.focus(),40); };
   const close=()=>{ measModal.classList.remove('show'); pinModal.classList.remove('show'); };
   document.getElementById('addMeasBtn').onclick=()=>open(measModal);
   document.getElementById('addPinBtn').onclick=()=>open(pinModal);
@@ -345,7 +346,14 @@ async function wireEntry(){
   }catch{}
 
   const wire=(formId, url, errId, build)=>{
-    document.getElementById(formId).addEventListener('submit', async (e)=>{
+    const formEl=document.getElementById(formId);
+    // Enter submits from any field (incl. number/date); inside the <select>,
+    // only Cmd/Ctrl+Enter submits so the dropdown's own Enter still picks options.
+    formEl.addEventListener('keydown', e=>{
+      if(e.key!=='Enter') return;
+      if(e.metaKey || e.ctrlKey || e.target.tagName!=='SELECT'){ e.preventDefault(); formEl.requestSubmit(); }
+    });
+    formEl.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const err=document.getElementById(errId); err.textContent='';
       const btn=e.target.querySelector('.save'); btn.disabled=true;
@@ -374,7 +382,8 @@ function showLogin(){
 
 // ===== dashboard renderer (unchanged behaviour, now fed from /api/data) =====
 function boot(DATA){
-  const BASELINE = DATA.rows[0].weight;          // first scale reading (Day 7)
+  const hasRows = !!(DATA.rows && DATA.rows.length);
+  const BASELINE = hasRows ? DATA.rows[0].weight : 0;  // first scale reading
   const GOAL = DATA.goalLossKg || 40;            // target total loss (kg)
   DATA.rows.forEach(r=>{ r.fatMass=+(r.weight*r.fat/100).toFixed(1); r.lost=+(BASELINE-r.weight).toFixed(1); });
   const fmtDate = s => { const m=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
@@ -384,21 +393,23 @@ function boot(DATA){
   document.getElementById('msList').innerHTML = '<div style="color:var(--amber);font-size:10px;letter-spacing:1px;margin-bottom:4px;">◆ KEY DATES</div>' +
     DATA.milestones.map(m=>`<div class="mi"><b>D${m.day}</b><span>${m.label}</span></div>`).join('');
 
-  // header summary (latest vs baseline)
-  const last = DATA.rows[DATA.rows.length-1], first = DATA.rows[0];
-  const pctChg=(a,b)=> (b? ((a-b)/b*100):0);
-  const setChg=(id,delta,unit,pct)=>{ const el=document.getElementById(id); if(!el) return;
-    const sign=delta<0?'▼':(delta>0?'▲':'◇'); el.className='chg '+(delta<0?'dn':(delta>0?'up':''));
-    el.textContent=`${sign} ${Math.abs(delta).toFixed(1)} ${unit}`+(pct!=null?` (${pct>0?'+':''}${pct.toFixed(1)}%)`:''); };
-  document.getElementById('hFat').innerHTML=last.fat.toFixed(1)+'<span style="font-size:11px"> %</span>';
-  document.getElementById('hWt').innerHTML=last.weight.toFixed(1)+'<span style="font-size:11px"> KG</span>';
-  document.getElementById('hFm').innerHTML=last.fatMass.toFixed(1)+'<span style="font-size:11px"> KG</span>';
-  document.getElementById('hMu').innerHTML=last.muscle.toFixed(1)+'<span style="font-size:11px"> KG</span>';
-  setChg('hFatChg', last.fat-first.fat, 'pts', pctChg(last.fat,first.fat));
-  setChg('hWtChg', last.weight-first.weight, '', pctChg(last.weight,first.weight));
-  setChg('hFmChg', last.fatMass-first.fatMass, '', pctChg(last.fatMass,first.fatMass));
-  setChg('hMuChg', last.muscle-first.muscle, 'kg', null);
+  // header summary (latest vs baseline) — only when there are readings
   document.getElementById('goalTarget').textContent='TARGET '+GOAL+' KG';
+  if(hasRows){
+    const last = DATA.rows[DATA.rows.length-1], first = DATA.rows[0];
+    const pctChg=(a,b)=> (b? ((a-b)/b*100):0);
+    const setChg=(id,delta,unit,pct)=>{ const el=document.getElementById(id); if(!el) return;
+      const sign=delta<0?'▼':(delta>0?'▲':'◇'); el.className='chg '+(delta<0?'dn':(delta>0?'up':''));
+      el.textContent=`${sign} ${Math.abs(delta).toFixed(1)} ${unit}`+(pct!=null?` (${pct>0?'+':''}${pct.toFixed(1)}%)`:''); };
+    document.getElementById('hFat').innerHTML=last.fat.toFixed(1)+'<span style="font-size:11px"> %</span>';
+    document.getElementById('hWt').innerHTML=last.weight.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+    document.getElementById('hFm').innerHTML=last.fatMass.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+    document.getElementById('hMu').innerHTML=last.muscle.toFixed(1)+'<span style="font-size:11px"> KG</span>';
+    setChg('hFatChg', last.fat-first.fat, 'pts', pctChg(last.fat,first.fat));
+    setChg('hWtChg', last.weight-first.weight, '', pctChg(last.weight,first.weight));
+    setChg('hFmChg', last.fatMass-first.fatMass, '', pctChg(last.fatMass,first.fatMass));
+    setChg('hMuChg', last.muscle-first.muscle, 'kg', null);
+  }
 
   const P = (k)=> DATA.rows.map(r=>({x:r.day, y:r[k]}));
   let showMilestones = true;
@@ -424,6 +435,7 @@ function boot(DATA){
   };
   // baseline reference + shaded "lost" band (top panel only)
   const baselinePlugin = { id:'baseline', afterDatasetsDraw(c){
+    if(!hasRows) return;
     if(c.canvas.id!=='chartTop') return;
     const y=c.scales.kg; if(!y || !c.isDatasetVisible(0)) return;
     const py=y.getPixelForValue(BASELINE), a=c.chartArea, ctx=c.ctx;
@@ -463,8 +475,9 @@ function boot(DATA){
     } else { dfp.textContent='—'; dfp.className='v'; dw.textContent='—'; dw.className='v'; }
   };
 
-  const mDays=DATA.rows.map(r=>r.day);
-  const xMax=Math.max(...mDays)+2;
+  const allDays=[...DATA.rows.map(r=>r.day), ...DATA.milestones.map(m=>m.day)];
+  const mDays = hasRows ? DATA.rows.map(r=>r.day) : DATA.milestones.map(m=>m.day);
+  const xMax=(allDays.length?Math.max(...allDays):8)+2;
   let xMode='day';
 
   function xScale(showLabels){
@@ -521,7 +534,7 @@ function boot(DATA){
                 ticks:{ color:'rgba(0,0,0,0)', font:{family:'monospace',size:10}, callback:()=>'00.0' },
                 grid:{drawOnChartArea:false}, border:{color:'#232b39'} } } }
   });
-  upd(DATA.rows.length-1);
+  if(hasRows) upd(DATA.rows.length-1);
 
   // ===== Bloomberg-style data tape under the chart =====
   (function renderTable(){
@@ -535,7 +548,8 @@ function boot(DATA){
       const pct=Math.round(r.lost/GOAL*100);
       return {r,dW,dF,pct,latest:i===rows.length-1};
     }).reverse();                                    // newest first
-    let html =
+    let html = '';
+    if(rows.length) html +=
       `<div class="dt-h">◧ MEASUREMENT TAPE — ${rows.length} READING${rows.length===1?'':'S'}</div>`+
       `<div class="dt-scroll"><table class="tape"><thead><tr>`+
         `<th>Date</th><th>Day</th><th>Weight</th><th>Δ Wt</th><th>Body Fat</th><th>Δ Fat</th>`+
