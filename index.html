@@ -567,9 +567,9 @@ function boot(DATA){
     ]},
     options:{ ...baseOpts(),
       scales:{ x:xScale(false),
-        kg:{ position:'left', title:{display:true,text:'WEIGHT (KG)',color:'#ffb43a',font:{family:'monospace',size:9}},
+        kg:{ position:'left', afterFit:(s)=>{s.width=56;}, title:{display:true,text:'WEIGHT (KG)',color:'#ffb43a',font:{family:'monospace',size:9}},
              ticks:{color:'#ffb43a',font:{family:'monospace',size:10}}, grid:{color:'#1a1e27'}, border:{color:'#232b39'} },
-        pct:{ position:'right', title:{display:true,text:'BODY FAT (%)',color:'#bb8dff',font:{family:'monospace',size:9}},
+        pct:{ position:'right', afterFit:(s)=>{s.width=48;}, title:{display:true,text:'BODY FAT (%)',color:'#bb8dff',font:{family:'monospace',size:9}},
               ticks:{color:'#bb8dff',font:{family:'monospace',size:10}}, grid:{drawOnChartArea:false}, border:{color:'#232b39'} } } }
   });
 
@@ -587,10 +587,10 @@ function boot(DATA){
     ]},
     options:{ ...baseOpts(),
       scales:{ x:xScale(true),
-        kg:{ position:'left', title:{display:true,text:'FAT / MUSCLE (KG)',color:'#828b99',font:{family:'monospace',size:9}},
+        kg:{ position:'left', afterFit:(s)=>{s.width=56;}, title:{display:true,text:'FAT / MUSCLE (KG)',color:'#828b99',font:{family:'monospace',size:9}},
              ticks:{color:'#828b99',font:{family:'monospace',size:10}}, grid:{color:'#1a1e27'}, border:{color:'#232b39'} },
         // ghost right axis to keep the two panels horizontally aligned with the top's % axis
-        ghost:{ position:'right', display:true, title:{display:true,text:' ',font:{size:9}},
+        ghost:{ position:'right', display:true, afterFit:(s)=>{s.width=48;}, title:{display:true,text:' ',font:{size:9}},
                 ticks:{ color:'rgba(0,0,0,0)', font:{family:'monospace',size:10}, callback:()=>'00.0' },
                 grid:{drawOnChartArea:false}, border:{color:'#232b39'} } } }
   });
