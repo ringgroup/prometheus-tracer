@@ -283,10 +283,10 @@
     <div class="mhead"><span class="tick">⚡ CONNECT YOUR AI · MCP</span><span class="x" data-close>ESC ✕</span></div>
     <div class="mbody">
       <div class="connect-row"><label>MCP URL</label><input id="mcpUrl" readonly><button type="button" class="rowact" data-copy="mcpUrl">copy</button></div>
-      <div class="connect-row"><label>API Token</label><input id="mcpToken" readonly placeholder="— generate below —"><button type="button" class="rowact" data-copy="mcpToken">copy</button></div>
-      <div class="mactions"><button type="button" class="save" id="genToken">GENERATE / REGENERATE</button><button type="button" class="cancel" id="revokeToken">REVOKE</button></div>
+      <div class="connect-row"><label>Token · optional</label><input id="mcpToken" readonly placeholder="— not needed for one-click —"><button type="button" class="rowact" data-copy="mcpToken">copy</button></div>
+      <div class="mactions"><button type="button" class="save" id="genToken">GENERATE TOKEN</button><button type="button" class="cancel" id="revokeToken">REVOKE</button></div>
       <div class="merr" id="connectMsg" style="color:var(--green)"></div>
-      <div class="cnote">Add this as a <b>remote MCP connector</b> in your AI client (Claude / ChatGPT): paste the URL and use the token as the <b>Bearer</b> auth header. <b>Read-only</b> access to your own data. Anyone with the token can read your data — revoke anytime.</div>
+      <div class="cnote"><b style="color:var(--amber)">One-click:</b> add the <b>MCP URL</b> as a remote connector in your AI (Claude · Cowork · ChatGPT). It sends you through a quick GitHub sign-in — <b>no token needed</b>.<br><br><b>Manual (optional):</b> if a client only takes a token, generate one above and use it as a <b>Bearer</b> header. Either way it's <b>read-only</b> access to your own data — revoke anytime.</div>
     </div>
   </div>
 </div>
