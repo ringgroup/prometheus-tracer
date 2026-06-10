@@ -69,6 +69,10 @@
     border-radius:3px; padding:1px 7px; margin-left:4px; font-size:11px; line-height:1.4; }
   .rowact:hover{ color:var(--amber); border-color:#4b3a13; }
   .rowact.del:hover{ color:var(--red); border-color:#5a2330; }
+  .connect-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .connect-row label{ width:84px; font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; }
+  .connect-row input{ flex:1; min-width:0; background:#000; border:1px solid #232b39; color:var(--txt); font-family:inherit; font-size:12px; padding:7px 9px; border-radius:2px; }
+  .cnote{ color:var(--dim); font-size:11px; line-height:1.6; margin-top:14px; border-top:1px solid #232b39; padding-top:12px; }
 
   /* ===== login gate ===== */
   #loginScreen{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
@@ -167,6 +171,7 @@
     <span class="tick">PROMETHEUS TRACER</span><span class="go">GO</span>
     <span class="desc">BODY COMPOSITION MONITOR · INBODY-770 · 187CM</span>
     <span class="user" id="userBadge"></span>
+    <a class="logout" id="connectBtn" style="cursor:pointer">⚡ CONNECT AI</a>
     <a class="logout" href="/api/logout">SIGN OUT</a>
     <span class="clock" id="clock"></span>
   </div>
@@ -272,6 +277,19 @@
     </div>
   </form>
 </div>
+
+<div class="modal" id="connectModal">
+  <div class="modalbox">
+    <div class="mhead"><span class="tick">⚡ CONNECT YOUR AI · MCP</span><span class="x" data-close>ESC ✕</span></div>
+    <div class="mbody">
+      <div class="connect-row"><label>MCP URL</label><input id="mcpUrl" readonly><button type="button" class="rowact" data-copy="mcpUrl">copy</button></div>
+      <div class="connect-row"><label>API Token</label><input id="mcpToken" readonly placeholder="— generate below —"><button type="button" class="rowact" data-copy="mcpToken">copy</button></div>
+      <div class="mactions"><button type="button" class="save" id="genToken">GENERATE / REGENERATE</button><button type="button" class="cancel" id="revokeToken">REVOKE</button></div>
+      <div class="merr" id="connectMsg" style="color:var(--green)"></div>
+      <div class="cnote">Add this as a <b>remote MCP connector</b> in your AI client (Claude / ChatGPT): paste the URL and use the token as the <b>Bearer</b> auth header. <b>Read-only</b> access to your own data. Anyone with the token can read your data — revoke anytime.</div>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -332,11 +350,28 @@ async function wireEntry(){
     const d=m.querySelector('input[name=date]'); if(d){ d.min='2023-01-01'; d.max=today(); d.value=today(); }
     m.classList.add('show');
     const first=m.querySelector('select,input'); if(first) setTimeout(()=>first.focus(),40); };
-  const close=()=>{ measModal.classList.remove('show'); pinModal.classList.remove('show'); };
+  const close=()=>document.querySelectorAll('.modal.show').forEach(x=>x.classList.remove('show'));
   document.getElementById('addMeasBtn').onclick=()=>open(measModal);
   document.getElementById('addPinBtn').onclick=()=>open(pinModal);
   document.querySelectorAll('[data-close]').forEach(el=>el.onclick=close);
-  [measModal,pinModal].forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) close(); }));
+  document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) close(); }));
+
+  // ---- Connect AI (remote MCP) ----
+  const connectModal=document.getElementById('connectModal');
+  const mcpUrlEl=document.getElementById('mcpUrl'); if(mcpUrlEl) mcpUrlEl.value=location.origin+'/api/mcp';
+  const setMsg=(t)=>{ const e=document.getElementById('connectMsg'); if(e) e.textContent=t||''; };
+  const loadToken=async()=>{ setMsg(''); try{ const t=await (await fetch('/api/token')).json(); document.getElementById('mcpToken').value=t.token||''; }catch{} };
+  const cBtn=document.getElementById('connectBtn');
+  if(cBtn) cBtn.onclick=()=>{ loadToken(); connectModal.classList.add('show'); };
+  const gen=document.getElementById('genToken');
+  if(gen) gen.onclick=async()=>{ setMsg('…'); try{ const t=await (await fetch('/api/token',{method:'POST'})).json(); document.getElementById('mcpToken').value=t.token||''; setMsg('New token generated — any previous one is now revoked.'); }catch{ setMsg('Failed to generate.'); } };
+  const rev=document.getElementById('revokeToken');
+  if(rev) rev.onclick=async()=>{ try{ await fetch('/api/token',{method:'DELETE'}); document.getElementById('mcpToken').value=''; setMsg('Token revoked.'); }catch{} };
+  document.querySelectorAll('#connectModal [data-copy]').forEach(b=>b.onclick=()=>{
+    const el=document.getElementById(b.dataset.copy); if(!el||!el.value) return;
+    el.select&&el.select(); try{ navigator.clipboard&&navigator.clipboard.writeText(el.value); }catch{}
+    const o=b.textContent; b.textContent='copied'; setTimeout(()=>b.textContent=o,1200);
+  });
   // hotkeys: A = add measurement, I = log injection, Esc = close
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){ close(); return; }
